@@ -1,5 +1,6 @@
 use crate::opcode;
 
+#[derive(Debug)]
 pub enum Command {
     Integer(MathOperator),
     Real(MathOperator),
@@ -16,7 +17,7 @@ pub enum Command {
     ConstantLoad(Constant),
     ConstantStore(Constant),
 }
-
+#[derive(Debug)]
 pub enum Kind {
     Integer,
     Real,
@@ -36,6 +37,7 @@ impl Kind {
     }
 }
 
+#[derive(Debug)]
 pub enum MathOperator {
     Add,
     Sub,
@@ -67,6 +69,7 @@ impl MathOperator {
     }
 }
 
+#[derive(Debug)]
 pub enum ControlFlow {
     Jump,
     JumpTrue,
@@ -90,6 +93,7 @@ impl ControlFlow {
     }
 }
 
+#[derive(Debug)]
 pub enum Constant {
     Integer(i32),
     Real(f64),

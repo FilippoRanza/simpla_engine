@@ -6,6 +6,71 @@ use std::str;
 use crate::command_definition::*;
 use crate::opcode;
 
+#[derive(Debug)]
+pub struct Program {
+    pub body: Vec<Command>,
+    pub func: Vec<Vec<Command>>
+}
+
+enum ProgramBuildState {
+    Body,
+    Function
+}
+
+struct ProgramFactory {
+    state: ProgramBuildState,
+    body: Vec<Command>,
+    func: Vec<Vec<Command>>,
+    curr: Vec<Command>
+}
+
+impl ProgramFactory {
+    fn new() -> Self {
+        Self {
+            state: ProgramBuildState::Body,
+            body: vec![],
+            func: vec![],
+            curr: vec![]
+        }
+    }
+
+    fn switch_function(mut self) -> Self {
+        match self.state {
+            ProgramBuildState::Body => self.state = ProgramBuildState::Function,
+            ProgramBuildState::Function => {
+                self.func.push(self.curr);
+            }
+        }
+        Self {
+            body: self.body,
+            func: self.func,
+            state: self.state,
+            curr: vec![]
+        }
+    }
+
+    fn add_command(&mut self, cmd: Command) {
+        match self.state {
+            ProgramBuildState::Body => self.body.push(cmd),
+            ProgramBuildState::Function => self.curr.push(cmd)
+        }
+    }
+
+    fn build_program(mut self) -> Program {
+        if self.curr.len() > 0 {
+            self.func.push(self.curr);
+        }
+        Program {
+            body: self.body,
+            func: self.func
+        }
+    }
+
+}
+
+
+
+#[derive(Debug)]
 pub enum LoadError {
     UnknownByte(UnknownByteError),
     MissingBytes(ErrorLocation),
@@ -26,6 +91,7 @@ impl From<str::Utf8Error> for LoadError {
     }
 }
 
+#[derive(Debug)]
 pub struct UnknownByteError {
     pub value: u8,
     pub index: usize
@@ -40,39 +106,55 @@ impl UnknownByteError {
     }
 }
 
+#[derive(Debug)]
 pub struct ErrorLocation {
     pub index: usize,
     pub length: usize,
+    pub err: ErrorOperation
+}
+
+#[derive(Debug)]
+pub enum ErrorOperation {
+    LoadingU16,
+    LoadingI32,
+    LoadingF64,
+    LoadingStr,
+    LoadingBool,
 }
 
 impl ErrorLocation {
-    fn new(index: usize, length: usize) -> Self {
-        Self { index, length }
+    fn new(index: usize, length: usize, err: ErrorOperation) -> Self {
+        Self { index, length, err }
     }
 }
 
-pub fn load_program(file: &Path) -> Result<Vec<Command>, LoadError> {
+pub fn load_program(file: &Path) -> Result<Program, LoadError> {
     let data = load_file(file)?;
-    let mut output = Vec::new();
+    parse_data(&data)
+}
 
+fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
+    let mut factory = ProgramFactory::new();
     let mut index = 0;
     while index < data.len() {
         if let Some(cmd) = is_single_command(data[index]) {
-            output.push(cmd);
+            factory.add_command(cmd);
             index += 1;
         } else if let Some(cmd) = is_address_command(index, &data)? {
-            output.push(cmd);
+            factory.add_command(cmd);
             index += 3;
         } else if let Some((cmd, offset)) = is_constant_command(index, &data)? {
-            output.push(cmd);
+            factory.add_command(cmd);
             index += offset;
+        } else if data[index] == opcode::FUNC {
+            factory = factory.switch_function();
         } else {
             let err = UnknownByteError::new(data[index], index);
             return Err(LoadError::UnknownByte(err))
         }
     }
 
-    Ok(output)
+    Ok(factory.build_program())
 }
 
 fn is_single_command(byte: u8) -> Option<Command> {
@@ -86,18 +168,20 @@ fn is_single_command(byte: u8) -> Option<Command> {
 
 fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<Command>, LoadError> {
     let byte = buff[index];
-    let addr = get_u16(buff, index + 1)? as usize;
     let output = match byte {
         opcode::LDI..=opcode::STRS => {
             let k = Kind::new(byte);
             let cmd = if byte < opcode::STRI {
+                let addr = get_u16(buff, index + 1)? as usize;
                 Command::MemoryLoad(k, addr)
             } else {
+                let addr = get_u16(buff, index + 1)? as usize;
                 Command::MemoryStore(k, addr)
             };
             Some(cmd)
         }
         opcode::JUMP..=opcode::RET => {
+            let addr = get_u16(buff, index + 1)? as usize;
             let cond = ControlFlow::new(byte);
             Some(Command::Control(cond, addr))
         }
@@ -176,29 +260,29 @@ fn load_file(file: &Path) -> std::io::Result<Vec<u8>> {
 }
 
 fn take_bytes<'a>(buff: &'a [u8], start: usize, len: usize) -> Result<&'a [u8], LoadError> {
-    if buff.len() > start + len {
+    if buff.len() > start + len - 1{
         let end = start + len;
         let tmp = &buff[start..end];
         Ok(tmp)
     } else {
-        let err = ErrorLocation::new(start, len);
+        let err = ErrorLocation::new(start, len, ErrorOperation::LoadingStr);
         Err(LoadError::MissingBytes(err))
     }
 }
 
 fn get_u16(buff: &[u8], index: usize) -> Result<u16, LoadError> {
-    if buff.len() > index + 2 {
+    if buff.len() > index + 1 {
         let value = [buff[index], buff[index + 1]];
         let output = u16::from_be_bytes(value);
         Ok(output)
     } else {
-        let err = ErrorLocation::new(index, 2);
+        let err = ErrorLocation::new(index, 2, ErrorOperation::LoadingU16);
         Err(LoadError::MissingBytes(err))
     }
 }
 
 fn get_i32(buff: &[u8], index: usize) -> Result<i32, LoadError> {
-    if buff.len() > index + 4 {
+    if buff.len() > index + 3 {
         let value = [
             buff[index],
             buff[index + 1],
@@ -208,13 +292,13 @@ fn get_i32(buff: &[u8], index: usize) -> Result<i32, LoadError> {
         let output = i32::from_be_bytes(value);
         Ok(output)
     } else {
-        let err = ErrorLocation::new(index, 4);
+        let err = ErrorLocation::new(index, 4, ErrorOperation::LoadingI32);
         Err(LoadError::MissingBytes(err))
     }
 }
 
 fn get_f64(buff: &[u8], index: usize) -> Result<f64, LoadError> {
-    if buff.len() > index + 8 {
+    if buff.len() > index + 7 {
         let value = [
             buff[index],
             buff[index + 1],
@@ -228,7 +312,7 @@ fn get_f64(buff: &[u8], index: usize) -> Result<f64, LoadError> {
         let output = f64::from_be_bytes(value);
         Ok(output)
     } else {
-        let err = ErrorLocation::new(index, 8);
+        let err = ErrorLocation::new(index, 8, ErrorOperation::LoadingF64);
         Err(LoadError::MissingBytes(err))
     }
 }
@@ -245,7 +329,68 @@ fn get_boolean(buff: &[u8], index: usize) -> Result<bool, LoadError> {
             }
         }
     } else {
-        let err = ErrorLocation::new(index, 1);
+        let err = ErrorLocation::new(index, 1, ErrorOperation::LoadingBool);
         Err(LoadError::MissingBytes(err))
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_correct_parse() {
+        let simple = vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::OR];
+        parse_data(&simple).unwrap();
+
+        // 5 chars
+        let a = 'a' as u8;
+        let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
+        let prog = parse_data(&with_string).unwrap();
+        assert_eq!(prog.body.len(), 1);
+        assert_eq!(prog.func.len(), 0);
+
+        let cmd = &prog.body[0];
+        assert!(
+            matches!(cmd, Command::ConstantLoad(ld) if
+                matches!(ld, Constant::Str(s) if s == "aaaaa")
+            )
+        );
+
+
+    }
+
+
+    #[test]
+    fn test_wrong_byte() {
+        let test_string = "test with lc";
+        let len = test_string.len() as u16;
+        let test_bytes = test_string.as_bytes();
+
+        let mut data = Vec::new();
+        data.push(opcode::LDSC);
+        for b in &len.to_be_bytes() {
+            data.push(*b)
+        }
+
+        for b in test_bytes {
+            data.push(*b);
+        }
+
+        // 255 is an invalid opcode
+        data.push(255);
+        let stat = parse_data(&data).unwrap_err();
+        match stat {
+            LoadError::UnknownByte(err) => {
+                assert_eq!(err.value, 255);
+            },
+            _ => assert!(false, "{:?}", stat)
+        }
+
+    }
+
+}
+
+
+

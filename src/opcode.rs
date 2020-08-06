@@ -53,3 +53,4 @@ pub const STRIC: u8 = 51; // 51 % 4 = 3
 pub const STRRC: u8 = 52; // 52 % 4 = 0
 pub const STRBC: u8 = 53; // 53 % 4 = 1
 pub const STRSC: u8 = 54; // 54 % 4 = 2
+pub const FUNC: u8 = 55;
