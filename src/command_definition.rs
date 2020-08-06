@@ -1,6 +1,12 @@
 use crate::opcode;
 
 #[derive(Debug)]
+pub struct Program {
+    pub body: Vec<Command>,
+    pub func: Vec<Vec<Command>>,
+}
+
+#[derive(Debug)]
 pub enum Command {
     Integer(MathOperator),
     Real(MathOperator),

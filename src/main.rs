@@ -1,7 +1,19 @@
 mod command_definition;
+mod engine;
 mod opcode;
 mod program_load;
 
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+struct CLIArguments {
+    #[structopt(name = "FILE")]
+    file: PathBuf,
+}
+
 fn main() {
-    println!("Hello, world!");
+    let args = CLIArguments::from_args();
+    let prog = program_load::load_program(&args.file).unwrap();
+    engine::run_program(prog);
 }

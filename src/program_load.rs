@@ -6,12 +6,6 @@ use std::str;
 use crate::command_definition::*;
 use crate::opcode;
 
-#[derive(Debug)]
-pub struct Program {
-    pub body: Vec<Command>,
-    pub func: Vec<Vec<Command>>,
-}
-
 enum ProgramBuildState {
     Body,
     Function,
