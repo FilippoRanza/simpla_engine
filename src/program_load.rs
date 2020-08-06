@@ -9,19 +9,19 @@ use crate::opcode;
 #[derive(Debug)]
 pub struct Program {
     pub body: Vec<Command>,
-    pub func: Vec<Vec<Command>>
+    pub func: Vec<Vec<Command>>,
 }
 
 enum ProgramBuildState {
     Body,
-    Function
+    Function,
 }
 
 struct ProgramFactory {
     state: ProgramBuildState,
     body: Vec<Command>,
     func: Vec<Vec<Command>>,
-    curr: Vec<Command>
+    curr: Vec<Command>,
 }
 
 impl ProgramFactory {
@@ -30,7 +30,7 @@ impl ProgramFactory {
             state: ProgramBuildState::Body,
             body: vec![],
             func: vec![],
-            curr: vec![]
+            curr: vec![],
         }
     }
 
@@ -45,14 +45,14 @@ impl ProgramFactory {
             body: self.body,
             func: self.func,
             state: self.state,
-            curr: vec![]
+            curr: vec![],
         }
     }
 
     fn add_command(&mut self, cmd: Command) {
         match self.state {
             ProgramBuildState::Body => self.body.push(cmd),
-            ProgramBuildState::Function => self.curr.push(cmd)
+            ProgramBuildState::Function => self.curr.push(cmd),
         }
     }
 
@@ -62,13 +62,10 @@ impl ProgramFactory {
         }
         Program {
             body: self.body,
-            func: self.func
+            func: self.func,
         }
     }
-
 }
-
-
 
 #[derive(Debug)]
 pub enum LoadError {
@@ -94,15 +91,12 @@ impl From<str::Utf8Error> for LoadError {
 #[derive(Debug)]
 pub struct UnknownByteError {
     pub value: u8,
-    pub index: usize
+    pub index: usize,
 }
 
 impl UnknownByteError {
     fn new(value: u8, index: usize) -> Self {
-        Self { 
-            value,
-            index
-        }
+        Self { value, index }
     }
 }
 
@@ -110,7 +104,7 @@ impl UnknownByteError {
 pub struct ErrorLocation {
     pub index: usize,
     pub length: usize,
-    pub err: ErrorOperation
+    pub err: ErrorOperation,
 }
 
 #[derive(Debug)]
@@ -150,7 +144,7 @@ fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
             factory = factory.switch_function();
         } else {
             let err = UnknownByteError::new(data[index], index);
-            return Err(LoadError::UnknownByte(err))
+            return Err(LoadError::UnknownByte(err));
         }
     }
 
@@ -260,7 +254,7 @@ fn load_file(file: &Path) -> std::io::Result<Vec<u8>> {
 }
 
 fn take_bytes<'a>(buff: &'a [u8], start: usize, len: usize) -> Result<&'a [u8], LoadError> {
-    if buff.len() > start + len - 1{
+    if buff.len() > start + len - 1 {
         let end = start + len;
         let tmp = &buff[start..end];
         Ok(tmp)
@@ -352,15 +346,10 @@ mod test {
         assert_eq!(prog.func.len(), 0);
 
         let cmd = &prog.body[0];
-        assert!(
-            matches!(cmd, Command::ConstantLoad(ld) if
-                matches!(ld, Constant::Str(s) if s == "aaaaa")
-            )
-        );
-
-
+        assert!(matches!(cmd, Command::ConstantLoad(ld) if
+            matches!(ld, Constant::Str(s) if s == "aaaaa")
+        ));
     }
-
 
     #[test]
     fn test_wrong_byte() {
@@ -384,13 +373,28 @@ mod test {
         match stat {
             LoadError::UnknownByte(err) => {
                 assert_eq!(err.value, 255);
-            },
-            _ => assert!(false, "{:?}", stat)
+            }
+            _ => assert!(false, "{:?}", stat),
         }
-
     }
 
+    #[test]
+    fn test_load_f64() {
+        let number: f64 = 6.80;
+        let bytes = number.to_be_bytes();
+
+        let mut data = vec![opcode::LDRC];
+        for b in &bytes {
+            data.push(*b);
+        }
+
+        let prog = parse_data(&data).unwrap();
+        assert_eq!(prog.body.len(), 1);
+        assert_eq!(prog.func.len(), 0);
+
+        let cmd = &prog.body[0];
+        assert!(matches!(cmd, Command::ConstantLoad(ld) if
+            matches!(ld, Constant::Real(r) if *r == number)
+        ))
+    }
 }
-
-
-
