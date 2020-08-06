@@ -174,7 +174,7 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
         }
         opcode::JUMP..=opcode::RET => {
             let cond = ControlFlow::new(byte);
-            let (addr, offset) =  if byte == opcode::RET {
+            let (addr, offset) = if byte == opcode::RET {
                 (0, 1)
             } else {
                 let tmp = get_u16(buff, index + 1)? as usize;
@@ -401,14 +401,13 @@ mod test {
         ))
     }
 
-
     #[test]
     fn test_function_build() {
         let data = [
             opcode::ADDI,
             opcode::GEQI,
             opcode::CALL,
-            0, 
+            0,
             1,
             opcode::EXT,
             opcode::FUNC,
@@ -416,14 +415,11 @@ mod test {
             opcode::RET,
             opcode::FUNC,
             opcode::GEQR,
-            opcode::RET
+            opcode::RET,
         ];
-
 
         let prog = parse_data(&data).unwrap();
         assert_eq!(prog.body.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
-
     }
-
 }
