@@ -35,16 +35,13 @@ impl ProgramFactory {
     }
 
     fn switch_function(mut self) -> Self {
-        match self.state {
-            ProgramBuildState::Body => self.state = ProgramBuildState::Function,
-            ProgramBuildState::Function => {
-                self.func.push(self.curr);
-            }
+        if self.curr.len() > 0 {
+            self.func.push(self.curr);
         }
         Self {
             body: self.body,
             func: self.func,
-            state: self.state,
+            state: ProgramBuildState::Function,
             curr: vec![],
         }
     }
@@ -134,14 +131,15 @@ fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
         if let Some(cmd) = is_single_command(data[index]) {
             factory.add_command(cmd);
             index += 1;
-        } else if let Some(cmd) = is_address_command(index, &data)? {
+        } else if let Some((cmd, offset)) = is_address_command(index, &data)? {
             factory.add_command(cmd);
-            index += 3;
+            index += offset;
         } else if let Some((cmd, offset)) = is_constant_command(index, &data)? {
             factory.add_command(cmd);
             index += offset;
         } else if data[index] == opcode::FUNC {
             factory = factory.switch_function();
+            index += 1;
         } else {
             let err = UnknownByteError::new(data[index], index);
             return Err(LoadError::UnknownByte(err));
@@ -160,7 +158,7 @@ fn is_single_command(byte: u8) -> Option<Command> {
     }
 }
 
-fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<Command>, LoadError> {
+fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usize)>, LoadError> {
     let byte = buff[index];
     let output = match byte {
         opcode::LDI..=opcode::STRS => {
@@ -172,12 +170,17 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<Command>, Load
                 let addr = get_u16(buff, index + 1)? as usize;
                 Command::MemoryStore(k, addr)
             };
-            Some(cmd)
+            Some((cmd, 3))
         }
         opcode::JUMP..=opcode::RET => {
-            let addr = get_u16(buff, index + 1)? as usize;
             let cond = ControlFlow::new(byte);
-            Some(Command::Control(cond, addr))
+            let (addr, offset) =  if byte == opcode::RET {
+                (0, 1)
+            } else {
+                let tmp = get_u16(buff, index + 1)? as usize;
+                (tmp, 3)
+            };
+            Some((Command::Control(cond, addr), offset))
         }
         _ => None,
     };
@@ -397,4 +400,30 @@ mod test {
             matches!(ld, Constant::Real(r) if *r == number)
         ))
     }
+
+
+    #[test]
+    fn test_function_build() {
+        let data = [
+            opcode::ADDI,
+            opcode::GEQI,
+            opcode::CALL,
+            0, 
+            1,
+            opcode::EXT,
+            opcode::FUNC,
+            opcode::ADDI,
+            opcode::RET,
+            opcode::FUNC,
+            opcode::GEQR,
+            opcode::RET
+        ];
+
+
+        let prog = parse_data(&data).unwrap();
+        assert_eq!(prog.body.len(), 4);
+        assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
+
+    }
+
 }
