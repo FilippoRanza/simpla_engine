@@ -421,5 +421,8 @@ mod test {
         let prog = parse_data(&data).unwrap();
         assert_eq!(prog.body.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
+        for func in &prog.func {
+            assert_eq!(func.len(), 2);
+        }
     }
 }
