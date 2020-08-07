@@ -11,7 +11,6 @@ pub enum ReadError<'a> {
     MissingInteger,
     MissingReal,
     MissingBoolean,
-    MissingString,
 }
 
 impl<'a> From<Error> for ReadError<'a> {
