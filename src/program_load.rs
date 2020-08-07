@@ -5,6 +5,7 @@ use std::str;
 
 use crate::command_definition::*;
 use crate::opcode;
+use crate::string_memory::StringMemory;
 
 enum ProgramBuildState {
     Body,
@@ -113,14 +114,15 @@ impl ErrorLocation {
     }
 }
 
-pub fn load_program(file: &Path) -> Result<Program, LoadError> {
+pub fn load_program(file: &Path) -> Result<(Program, StringMemory), LoadError> {
     let data = load_file(file)?;
     parse_data(&data)
 }
 
-fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
+fn parse_data(data: &[u8]) -> Result<(Program, StringMemory), LoadError> {
     let mut factory = ProgramFactory::new();
     let mut index = 0;
+    let mut string_memory = StringMemory::new();
     while index < data.len() {
         if let Some(cmd) = is_single_command(data[index]) {
             factory.add_command(cmd);
@@ -128,7 +130,7 @@ fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
         } else if let Some((cmd, offset)) = is_address_command(index, &data)? {
             factory.add_command(cmd);
             index += offset;
-        } else if let Some((cmd, offset)) = is_constant_command(index, &data)? {
+        } else if let Some((cmd, offset)) = is_constant_command(index, &data, &mut string_memory)? {
             factory.add_command(cmd);
             index += offset;
         } else if data[index] == opcode::FUNC {
@@ -140,7 +142,7 @@ fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
         }
     }
 
-    Ok(factory.build_program())
+    Ok((factory.build_program(), string_memory))
 }
 
 fn is_single_command(byte: u8) -> Option<Command> {
@@ -181,16 +183,16 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
     Ok(output)
 }
 
-fn is_constant_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usize)>, LoadError> {
+fn is_constant_command(index: usize, buff: &[u8], str_mem: &mut StringMemory) -> Result<Option<(Command, usize)>, LoadError> {
     let byte = buff[index];
     let output = match byte {
         opcode::LDIC..=opcode::LDSC => {
-            let (tmp, offset) = convert_constant(index, buff)?;
+            let (tmp, offset) = convert_constant(index, buff, str_mem)?;
             let out = Command::ConstantLoad(tmp);
             Some((out, offset + 1))
         }
         opcode::STRIC..=opcode::STRSC => {
-            let (tmp, offset) = convert_constant(index, buff)?;
+            let (tmp, offset) = convert_constant(index, buff, str_mem)?;
             let out = Command::ConstantStore(tmp);
             Some((out, offset + 1))
         }
@@ -200,7 +202,7 @@ fn is_constant_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usi
     Ok(output)
 }
 
-fn convert_constant(index: usize, buff: &[u8]) -> Result<(Constant, usize), LoadError> {
+fn convert_constant(index: usize, buff: &[u8], str_mem: &mut StringMemory) -> Result<(Constant, usize), LoadError> {
     // load and store constant modulo 4 follows
     // the same pattern, check opcode list
     match buff[index] % 4 {
@@ -221,7 +223,8 @@ fn convert_constant(index: usize, buff: &[u8]) -> Result<(Constant, usize), Load
             let byte_string = take_bytes(buff, index + 3, size)?;
             let tmp_str = str::from_utf8(byte_string)?;
             let string = tmp_str.to_owned();
-            Ok((Constant::Str(string), size + 2))
+            let index = str_mem.insert_string(string);
+            Ok((Constant::Str(index), size + 2))
         }
         _ => unreachable!(),
     }
@@ -339,13 +342,13 @@ mod test {
         // 5 chars
         let a = 'a' as u8;
         let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
-        let prog = parse_data(&with_string).unwrap();
+        let (prog, mem) = parse_data(&with_string).unwrap();
         assert_eq!(prog.body.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
         let cmd = &prog.body[0];
         assert!(matches!(cmd, Command::ConstantLoad(ld) if
-            matches!(ld, Constant::Str(s) if s == "aaaaa")
+            matches!(ld, Constant::Str(s) if mem.get_string(*s) == "aaaaa")
         ));
     }
 
@@ -386,7 +389,7 @@ mod test {
             data.push(*b);
         }
 
-        let prog = parse_data(&data).unwrap();
+        let (prog, _) = parse_data(&data).unwrap();
         assert_eq!(prog.body.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
@@ -413,7 +416,7 @@ mod test {
             opcode::RET,
         ];
 
-        let prog = parse_data(&data).unwrap();
+        let (prog, _) = parse_data(&data).unwrap();
         assert_eq!(prog.body.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
         for func in &prog.func {

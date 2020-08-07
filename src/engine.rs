@@ -1,14 +1,16 @@
-use crate::command_definition::{Command, Kind, MathOperator, Program};
+use crate::command_definition::{Command, Kind, MathOperator, Program, Constant, ControlFlow};
 use crate::line_reader::LineReader;
+use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
 
-pub fn run_program(prog: Program) -> Result<(), RuntimeError> {
+pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(), RuntimeError> {
     let mut stack_vect: Vec<Record> = Vec::new();
-
+    
     let mut curr_block = &prog.body;
     let mut index: usize = 0;
 
+    let mut global_memory = EngineMemory::new() ;
     let mut engine_stack = EngineStack::new();
 
     let mut reader = LineReader::new(true);
@@ -37,14 +39,36 @@ pub fn run_program(prog: Program) -> Result<(), RuntimeError> {
                 engine_stack.real_stack.push(n);
             }
             Command::And | Command::Or => boolean_operation(cmd, &mut engine_stack.bool_stack),
-            Command::MemoryLoad(load, add) => {}
-            Command::MemoryStore(store, add) => {}
-            Command::Control(ctrl, addr) => {}
-            Command::Input(k) => input(k, &mut engine_stack, &mut reader),
-            Command::Output(k) => output(k, &mut engine_stack, OutputMode::SameLine),
-            Command::OutputLine(k) => output(k, &mut engine_stack, OutputMode::NewLine),
-            Command::Exit => {}
-            Command::ConstantLoad(load) => {}
+            Command::MemoryLoad(load, add) => {
+                let local = if let Some(last) = stack_vect.last_mut() {
+                    Some(&last.func_mem)
+                } else {
+                    None
+                };
+                memory_load(load, *add, &mut engine_stack, &global_memory, local);
+            },
+            Command::MemoryStore(store, add) => {
+                let local = if let Some(last) = stack_vect.last_mut() {
+                    Some(&mut last.func_mem)
+                } else {
+                    None
+                };
+                memory_store(store, *add, &mut engine_stack, &mut global_memory, local)},
+            Command::Control(ctrl, addr) => {
+                match ctrl {
+                    ControlFlow::Call => {},
+                    ControlFlow::Ret => {},
+                    ControlFlow::Label => {},
+                    jump => {
+                        index = run_jump(jump, index, *addr, &mut engine_stack.bool_stack);
+                    }
+                }
+            }
+            Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory),
+            Command::Output(k) => output(k, &mut engine_stack, OutputMode::SameLine, &string_memory),
+            Command::OutputLine(k) => output(k, &mut engine_stack, OutputMode::NewLine, &string_memory),
+            Command::Exit => break,
+            Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
             Command::ConstantStore(store) => {}
         }
     }
@@ -56,7 +80,7 @@ struct EngineStack {
     int_stack: Vec<i32>,
     real_stack: Vec<f64>,
     bool_stack: Vec<bool>,
-    str_stack: Vec<String>,
+    str_stack: Vec<usize>,
 }
 
 impl EngineStack {
@@ -70,7 +94,145 @@ impl EngineStack {
     }
 }
 
-fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader) {
+fn run_jump(j: &ControlFlow, curr: usize, next: usize, stack: &mut Vec<bool>) -> usize {
+    match j {
+        ControlFlow::Jump => next,
+        ControlFlow::JumpTrue => {
+            let b = stack.pop().unwrap();
+            if b {
+                next
+            } else {
+                curr
+            }
+        }
+        ControlFlow::JumpFalse => {
+            let b = stack.pop().unwrap();
+            if !b {
+                next
+            } else {
+                curr
+            }
+        }
+        _ => unreachable!()
+    }
+
+}
+
+fn memory_load(k: &Kind, addr: usize, stack: &mut EngineStack, global: & EngineMemory, local: Option<&EngineMemory>) {
+    match k {
+        Kind::Bool => {
+            let loc = if let Some(mem) = local {
+                Some(&mem.bool_mem)
+            } else {
+                None
+            };
+            let b = get_value(&global.bool_mem, loc, addr);
+            stack.bool_stack.push(*b);
+        },
+        Kind::Integer => {
+            let loc = if let Some(mem) = local {
+                Some(&mem.int_mem)
+            } else {
+                None
+            };
+            let i = get_value(&global.int_mem, loc, addr);
+            stack.int_stack.push(*i);
+        },
+        Kind::Real => {
+            let loc = if let Some(mem) = local {
+                Some(&mem.real_mem)
+            } else {
+                None
+            };
+            let r = get_value(&global.real_mem, loc, addr);
+            stack.real_stack.push(*r);
+        },
+        Kind::Str => {
+            let loc = if let Some(mem) = local {
+                Some(&mem.str_mem)
+            } else {
+                None
+            };
+            let s = get_value(&global.str_mem, loc, addr);
+            stack.str_stack.push(*s)
+        }
+    }
+}
+
+fn memory_store(k: &Kind, addr: usize, stack: &mut EngineStack, global: &mut EngineMemory, local: Option<&mut EngineMemory>) {
+    match k {
+        Kind::Bool => {
+            let loc = if let Some(mem) = local {
+                Some(&mut mem.bool_mem)
+            } else {
+                None
+            };
+            let b = stack.bool_stack.pop().unwrap();
+            set_value(&mut global.bool_mem, loc, addr, b);
+        },
+        Kind::Integer => {
+            let loc = if let Some(mem) = local {
+                Some(&mut mem.int_mem)
+            } else {
+                None
+            };
+            let b = stack.int_stack.pop().unwrap();
+            set_value(&mut global.int_mem, loc, addr, b);
+        },
+        Kind::Real => {
+            let loc = if let Some(mem) = local {
+                Some(&mut mem.real_mem)
+            } else {
+                None
+            };
+            let b = stack.real_stack.pop().unwrap();
+            set_value(&mut global.real_mem, loc, addr, b);
+        },
+        Kind::Str => {
+            let loc = if let Some(mem) = local {
+                Some(&mut mem.str_mem)
+            } else {
+                None
+            };
+            let b = stack.str_stack.pop().unwrap();
+            set_value(&mut global.str_mem, loc, addr, b);
+        }
+    }
+}
+
+fn get_value<'a, T>(glob: &'a Vec<T>, loc: Option<&'a Vec<T>>, addr: usize) -> &'a T {
+    if glob.len() > addr {
+        &glob[addr]
+    } else if let Some(loc) = loc {
+        let addr = addr - glob.len();
+        &loc[addr]
+    } else {
+        panic!()
+    }
+}
+
+fn set_value<T>(glob: &mut Vec<T>, loc: Option<&mut Vec<T>>, addr: usize, value: T) {
+    if glob.len() > addr {
+        glob[addr] = value;
+    } else if let Some(loc) = loc{
+        let addr = addr - glob.len();
+        loc[addr] = value;
+    } else {
+        panic!()
+    }
+}
+
+
+fn load_constant(load: &Constant, stack: &mut EngineStack) {
+    match load {
+        Constant::Bool(b) => stack.bool_stack.push(*b),
+        Constant::Integer(i) => stack.int_stack.push(*i),
+        Constant::Real(r) => stack.real_stack.push(*r),
+        Constant::Str(s) => stack.str_stack.push(*s)
+    }
+}
+
+fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &mut StringMemory) {
     match k {
         Kind::Bool => {
             let tmp = reader.next_bool().unwrap();
@@ -86,7 +248,8 @@ fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader) {
         }
         Kind::Str => {
             let tmp = reader.next_string().unwrap();
-            stack.str_stack.push(tmp);
+            let index = str_mem.insert_string(tmp);
+            stack.str_stack.push(index);
         }
     }
 }
@@ -96,7 +259,7 @@ enum OutputMode {
     SameLine,
 }
 
-fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode) {
+fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode, str_mem: &StringMemory) {
     match k {
         Kind::Bool => {
             let b = stack.bool_stack.pop().unwrap();
@@ -115,7 +278,8 @@ fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode) {
         }
         Kind::Str => {
             let s = stack.str_stack.pop().unwrap();
-            print(&s, m);
+            let s = str_mem.get_string(s);
+            print(s, m);
         }
     };
 }
@@ -214,14 +378,39 @@ enum NumResult<T> {
     Boolean(bool),
 }
 
+struct EngineMemory {
+    int_mem: Vec<i32>,
+    real_mem: Vec<f64>,
+    bool_mem: Vec<bool>,
+    str_mem: Vec<usize>,
+}
+impl EngineMemory {
+    fn new() -> Self {
+        Self {
+            int_mem: vec![],
+            real_mem: vec![],
+            bool_mem: vec![],
+            str_mem: vec![]
+        }
+    }
+}
+
 pub enum RuntimeError {}
 
 struct Record<'a> {
     return_index: usize,
     return_block: &'a Vec<Command>,
-
-    int_mem: Vec<i32>,
-    real_mem: Vec<f64>,
-    bool_mem: Vec<bool>,
-    str_mem: Vec<String>,
+    func_mem : EngineMemory
 }
+
+impl<'a> Record<'a> {
+    fn new(return_index: usize, return_block: &'a Vec<Command>) -> Self {
+        Self {
+            return_index,
+            return_block,
+            func_mem: EngineMemory::new()
+        }
+    } 
+}
+
+

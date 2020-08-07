@@ -104,6 +104,6 @@ impl ControlFlow {
 pub enum Constant {
     Integer(i32),
     Real(f64),
-    Str(String),
+    Str(usize),
     Bool(bool),
 }
