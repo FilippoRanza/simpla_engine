@@ -183,7 +183,11 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
     Ok(output)
 }
 
-fn is_constant_command(index: usize, buff: &[u8], str_mem: &mut StringMemory) -> Result<Option<(Command, usize)>, LoadError> {
+fn is_constant_command(
+    index: usize,
+    buff: &[u8],
+    str_mem: &mut StringMemory,
+) -> Result<Option<(Command, usize)>, LoadError> {
     let byte = buff[index];
     let output = match byte {
         opcode::LDIC..=opcode::LDSC => {
@@ -202,7 +206,11 @@ fn is_constant_command(index: usize, buff: &[u8], str_mem: &mut StringMemory) ->
     Ok(output)
 }
 
-fn convert_constant(index: usize, buff: &[u8], str_mem: &mut StringMemory) -> Result<(Constant, usize), LoadError> {
+fn convert_constant(
+    index: usize,
+    buff: &[u8],
+    str_mem: &mut StringMemory,
+) -> Result<(Constant, usize), LoadError> {
     // load and store constant modulo 4 follows
     // the same pattern, check opcode list
     match buff[index] % 4 {
