@@ -1,4 +1,5 @@
-use crate::command_definition::{Command, MathOperator, Program};
+use crate::command_definition::{Command, MathOperator, Program, Kind};
+use crate::line_reader::LineReader;
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -11,7 +12,9 @@ pub fn run_program(prog: Program) -> Result<(), RuntimeError> {
     let mut int_stack: Vec<i32> = Vec::new();
     let mut real_stack: Vec<f64> = Vec::new();
     let mut bool_stack: Vec<bool> = Vec::new();
-    let mut str_stack: Vec<&str> = Vec::new();
+    let mut str_stack: Vec<String> = Vec::new();
+
+    let mut reader = LineReader::new(true);
 
     while index < curr_block.len() {
         let cmd = &curr_block[index];
@@ -32,8 +35,28 @@ pub fn run_program(prog: Program) -> Result<(), RuntimeError> {
             Command::MemoryLoad(load, add) => {}
             Command::MemoryStore(store, add) => {}
             Command::Control(ctrl, addr) => {}
-            Command::Input(k) => {}
+            Command::Input(k) => {
+                match k {
+                    Kind::Bool => {
+                        let tmp = reader.next_bool().unwrap();
+                        bool_stack.push(tmp);
+                    }
+                    Kind::Integer => {
+                        let tmp = reader.next_i32().unwrap();
+                        int_stack.push(tmp);
+                    }
+                    Kind::Real => {
+                        let tmp = reader.next_f64().unwrap();
+                        real_stack.push(tmp);
+                    }
+                    Kind::Str => {
+                        let tmp = reader.next_string().unwrap();
+                        str_stack.push(tmp);
+                    }
+                }
+            }
             Command::Output(k) => {}
+            Command::OutputLine(k) => {}
             Command::Exit => {}
             Command::ConstantLoad(load) => {}
             Command::ConstantStore(store) => {}
@@ -42,6 +65,8 @@ pub fn run_program(prog: Program) -> Result<(), RuntimeError> {
 
     Ok(())
 }
+
+
 
 fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
     let a = stack.pop().unwrap();

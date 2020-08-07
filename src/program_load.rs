@@ -145,7 +145,7 @@ fn parse_data(data: &[u8]) -> Result<Program, LoadError> {
 
 fn is_single_command(byte: u8) -> Option<Command> {
     match byte {
-        opcode::ADDI..=opcode::AND | opcode::RDI..=opcode::WRS | opcode::EXT => {
+        opcode::ADDI..=opcode::AND | opcode::RDI..=opcode::WRLS | opcode::EXT => {
             Some(convert_single(byte))
         }
         _ => None,
@@ -234,6 +234,7 @@ fn convert_single(byte: u8) -> Command {
         opcode::ADDR..=opcode::NER => Command::Real(MathOperator::new(byte - 10)),
         opcode::RDI..=opcode::RDS => Command::Input(Kind::new(byte)),
         opcode::WRI..=opcode::WRS => Command::Output(Kind::new(byte)),
+        opcode::WRLI..=opcode::WRLS => Command::OutputLine(Kind::new(byte)),
         opcode::CSTI => Command::CastInt,
         opcode::CSTR => Command::CastReal,
         opcode::OR => Command::Or,

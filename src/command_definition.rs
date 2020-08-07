@@ -19,6 +19,7 @@ pub enum Command {
     Control(ControlFlow, usize),
     Input(Kind),
     Output(Kind),
+    OutputLine(Kind),
     Exit,
     ConstantLoad(Constant),
     ConstantStore(Constant),

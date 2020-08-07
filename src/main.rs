@@ -1,5 +1,6 @@
 mod command_definition;
 mod engine;
+mod line_reader;
 mod opcode;
 mod program_load;
 

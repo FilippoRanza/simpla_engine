@@ -30,27 +30,31 @@ pub const WRI: u8 = 28; // 28 % 4 = 0
 pub const WRR: u8 = 29; // 29 % 4 = 1
 pub const WRB: u8 = 30; // 30 % 4 = 2
 pub const WRS: u8 = 31; // 31 % 4 = 3
-pub const LDI: u8 = 32; // 32 % 4 = 0
-pub const LDR: u8 = 33; // 33 % 4 = 1
-pub const LDB: u8 = 34; // 34 % 4 = 2
-pub const LDS: u8 = 35; // 35 % 4 = 3
-pub const STRI: u8 = 36; // 36 % 4 = 0
-pub const STRR: u8 = 37; // 37 % 4 = 1
-pub const STRB: u8 = 38; // 38 % 4 = 2
-pub const STRS: u8 = 39; // 39 % 4 = 3
-pub const JUMP: u8 = 40;
-pub const JEQ: u8 = 41;
-pub const JNE: u8 = 42;
-pub const LBL: u8 = 43;
-pub const CALL: u8 = 44;
-pub const RET: u8 = 45;
-pub const EXT: u8 = 46;
-pub const LDIC: u8 = 47; // 47 % 4 = 3
-pub const LDRC: u8 = 48; // 48 % 4 = 0
-pub const LDBC: u8 = 49; // 49 % 4 = 1
-pub const LDSC: u8 = 50; // 50 % 4 = 2
-pub const STRIC: u8 = 51; // 51 % 4 = 3
-pub const STRRC: u8 = 52; // 52 % 4 = 0
-pub const STRBC: u8 = 53; // 53 % 4 = 1
-pub const STRSC: u8 = 54; // 54 % 4 = 2
-pub const FUNC: u8 = 55;
+pub const WRLI: u8 = 32; // 32 % 4 = 0
+pub const WRLR: u8 = 33; // 33 % 4 = 1
+pub const WRLB: u8 = 34; // 34 % 4 = 2
+pub const WRLS: u8 = 35; // 35 % 4 = 3
+pub const LDI: u8 = 36; // 36 % 4 = 0
+pub const LDR: u8 = 37; // 37 % 4 = 1
+pub const LDB: u8 = 38; // 38 % 4 = 2
+pub const LDS: u8 = 39; // 39 % 4 = 3
+pub const STRI: u8 = 40; // 40 % 4 = 0
+pub const STRR: u8 = 41; // 41 % 4 = 1
+pub const STRB: u8 = 42; // 42 % 4 = 2
+pub const STRS: u8 = 43; // 43 % 4 = 3
+pub const JUMP: u8 = 44;
+pub const JEQ: u8 = 45;
+pub const JNE: u8 = 46;
+pub const LBL: u8 = 47;
+pub const CALL: u8 = 48;
+pub const RET: u8 = 49;
+pub const EXT: u8 = 50;
+pub const LDIC: u8 = 51; // 51 % 4 = 3
+pub const LDRC: u8 = 52; // 52 % 4 = 0
+pub const LDBC: u8 = 53; // 53 % 4 = 1
+pub const LDSC: u8 = 54; // 54 % 4 = 2
+pub const STRIC: u8 = 55; // 55 % 4 = 3
+pub const STRRC: u8 = 56; // 56 % 4 = 0
+pub const STRBC: u8 = 57; // 57 % 4 = 1
+pub const STRSC: u8 = 58; // 58 % 4 = 2
+pub const FUNC: u8 = 59;
