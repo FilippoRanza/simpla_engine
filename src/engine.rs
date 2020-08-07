@@ -17,6 +17,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
 
     while index < curr_block.len() {
         let cmd = &curr_block[index];
+        // next instruction
+        index += 1;
         match cmd {
             Command::Integer(cmd) => full_math_operation(
                 &cmd,
@@ -56,8 +58,21 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 memory_store(store, *add, &mut engine_stack, &mut global_memory, local)
             }
             Command::Control(ctrl, addr) => match ctrl {
-                ControlFlow::Call => {}
-                ControlFlow::Ret => {}
+                ControlFlow::Call => {
+                    let new_record = Record::new(index, curr_block);
+                    curr_block = &prog.func[*addr];
+                    index = 0;
+                    stack_vect.push(new_record);
+                }
+                ControlFlow::Ret => {
+                    if let Some(top) = stack_vect.pop() {
+                        index = top.return_index;
+                        curr_block = top.return_block;
+                        string_memory.remove_strings(&top.func_mem.str_mem);
+                    } else {
+                        panic!()
+                    }
+                }
                 ControlFlow::Label => {}
                 jump => {
                     index = run_jump(jump, index, *addr, &mut engine_stack.bool_stack);
@@ -72,10 +87,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
-            Command::ConstantStore(store) => {}
+            Command::ConstantStore(_store) => {}
         }
-        // next instruction
-        index += 1;
     }
 
     Ok(())
