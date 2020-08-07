@@ -27,10 +27,6 @@ impl StringMemory {
         }
     }
 
-    pub fn remove_string(&mut self, index: usize) {
-        self.buff.remove(&index);
-    }
-
     pub fn get_string(&self, index: usize) -> &str {
         let tmp = self.buff.get(&index);
         tmp.unwrap()
