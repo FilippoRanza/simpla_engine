@@ -97,29 +97,34 @@ enum OutputMode {
 }
 
 fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode) {
-    let output = match k {
+    match k {
         Kind::Bool => {
             let b = stack.bool_stack.pop().unwrap();
-            format!("{}", b)
+            let tmp = format!("{}", b); 
+            print(&tmp, m);
         }
         Kind::Integer => {
             let i = stack.int_stack.pop().unwrap();
-            format!("{}", i)
+            let tmp = format!("{}", i);
+            print(&tmp, m);
         }
         Kind::Real => {
             let r = stack.real_stack.pop().unwrap();
-            format!("{}", r)
+            let tmp = format!("{}", r);
+            print(&tmp, m);
         }
         Kind::Str => {
             let s = stack.str_stack.pop().unwrap();
-            format!("{}", s)
+            print(&s, m);
         }
     };
+}
 
-    match m {
-        OutputMode::SameLine => print!("{}", output),
-        OutputMode::NewLine => println!("{}", output),
-    };
+fn print(s: &str, mode: OutputMode) {
+    match mode {
+        OutputMode::NewLine => println!("{}", s),
+        OutputMode::SameLine => print!("{}", s)
+    }
 }
 
 fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
