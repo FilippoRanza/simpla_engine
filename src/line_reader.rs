@@ -71,7 +71,7 @@ impl LineReader {
             int_buff: VecDeque::new(),
             real_buff: VecDeque::new(),
             bool_buff: VecDeque::new(),
-            auto_clean
+            auto_clean,
         }
     }
 
@@ -107,7 +107,6 @@ impl LineReader {
         let out = self.buff.clone();
         Ok(out)
     }
-
 }
 
 fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, ReadError<'a>> {
