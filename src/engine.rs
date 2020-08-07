@@ -74,6 +74,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
             Command::ConstantStore(store) => {}
         }
+        // next instruction
+        index += 1;
     }
 
     Ok(())
