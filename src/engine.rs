@@ -97,7 +97,7 @@ enum OutputMode {
 }
 
 fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode) {
-    let output: &str = match k {
+    let output = match k {
         Kind::Bool => {
             let b = stack.bool_stack.pop().unwrap();
             format!("{}", b)
@@ -112,7 +112,7 @@ fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode) {
         }
         Kind::Str => {
             let s = stack.str_stack.pop().unwrap();
-            &s
+            format!("{}", s)
         }
     };
 
