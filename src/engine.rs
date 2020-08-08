@@ -15,9 +15,10 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
 
     let mut reader = LineReader::new(true);
 
+    let mut next_record: Option<Record> = None;
+
     while index < curr_block.len() {
         let cmd = &curr_block[index];
-        // next instruction
         index += 1;
         match cmd {
             Command::Integer(cmd) => full_math_operation(
@@ -59,10 +60,14 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
             Command::Control(ctrl, addr) => match ctrl {
                 ControlFlow::Call => {
-                    let new_record = Record::new(index, curr_block);
-                    curr_block = &prog.func[*addr];
-                    index = 0;
-                    stack_vect.push(new_record);
+                    if let Some(block) = next_record {
+                        let mut block = block;
+                        block.return_index = index;
+                        curr_block = &prog.func[*addr];
+                        index = 0;
+                        stack_vect.push(block);
+                        next_record = None;
+                    }
                 }
                 ControlFlow::Ret => {
                     if let Some(top) = stack_vect.pop() {
@@ -87,8 +92,19 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
-            Command::StoreParam(k, addr) => {},
-            Command::NewRecord => {}
+            Command::StoreParam(k, addr) => {
+                let record = if let Some(ref mut record) = next_record {
+                    Some(&mut record.func_mem)
+                } else {
+                    None
+                };
+                memory_store(k, *addr, &mut engine_stack, &mut global_memory, record);
+            },
+            Command::NewRecord => {
+                if next_record.is_none() {
+                    next_record = Some(Record::new(curr_block));
+                }
+            }
         }
     }
 
@@ -433,9 +449,9 @@ struct Record<'a> {
 }
 
 impl<'a> Record<'a> {
-    fn new(return_index: usize, return_block: &'a Vec<Command>) -> Self {
+    fn new(return_block: &'a Vec<Command>) -> Self {
         Self {
-            return_index,
+            return_index: 0,
             return_block,
             func_mem: EngineMemory::new(),
         }
