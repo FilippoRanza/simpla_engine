@@ -22,7 +22,8 @@ pub enum Command {
     OutputLine(Kind),
     Exit,
     ConstantLoad(Constant),
-    ConstantStore(Constant),
+    StoreParam(Kind, usize),
+    NewRecord,
 }
 #[derive(Debug)]
 pub enum Kind {

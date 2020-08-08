@@ -1,3 +1,4 @@
+
 pub const ADDI: u8 = 0;
 pub const SUBI: u8 = 1;
 pub const MULI: u8 = 2;
@@ -53,8 +54,9 @@ pub const LDIC: u8 = 51; // 51 % 4 = 3
 pub const LDRC: u8 = 52; // 52 % 4 = 0
 pub const LDBC: u8 = 53; // 53 % 4 = 1
 pub const LDSC: u8 = 54; // 54 % 4 = 2
-pub const STRIC: u8 = 55; // 55 % 4 = 3
-pub const STRRC: u8 = 56; // 56 % 4 = 0
-pub const STRBC: u8 = 57; // 57 % 4 = 1
-pub const STRSC: u8 = 58; // 58 % 4 = 2
-pub const FUNC: u8 = 59;
+pub const PARAM: u8 = 55;
+pub const STRIP: u8 = 56; // 56 % 4 = 0
+pub const STRRP: u8 = 57; // 57 % 4 = 1
+pub const STRBP: u8 = 58; // 58 % 4 = 2
+pub const STRSP: u8 = 59; // 59 % 4 = 3
+pub const FUNC: u8 = 60;

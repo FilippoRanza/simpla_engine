@@ -87,7 +87,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
-            Command::ConstantStore(_store) => {}
+            Command::StoreParam(k, addr) => {},
+            Command::NewRecord => {}
         }
     }
 

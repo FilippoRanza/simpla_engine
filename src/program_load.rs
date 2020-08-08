@@ -147,7 +147,7 @@ fn parse_data(data: &[u8]) -> Result<(Program, StringMemory), LoadError> {
 
 fn is_single_command(byte: u8) -> Option<Command> {
     match byte {
-        opcode::ADDI..=opcode::AND | opcode::RDI..=opcode::WRLS | opcode::EXT => {
+        opcode::ADDI..=opcode::AND | opcode::RDI..=opcode::WRLS | opcode::EXT | opcode::PARAM => {
             Some(convert_single(byte))
         }
         _ => None,
@@ -178,6 +178,13 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
             };
             Some((Command::Control(cond, addr), offset))
         }
+        opcode::STRIP..=opcode::STRSP => {
+            let kind = Kind::new(byte);
+            let addr = get_u16(buff, index + 1)? as usize;
+            let cmd = Command::StoreParam(kind, addr);
+            Some((cmd, 3))
+        },
+
         _ => None,
     };
     Ok(output)
@@ -193,11 +200,6 @@ fn is_constant_command(
         opcode::LDIC..=opcode::LDSC => {
             let (tmp, offset) = convert_constant(index, buff, str_mem)?;
             let out = Command::ConstantLoad(tmp);
-            Some((out, offset + 1))
-        }
-        opcode::STRIC..=opcode::STRSC => {
-            let (tmp, offset) = convert_constant(index, buff, str_mem)?;
-            let out = Command::ConstantStore(tmp);
             Some((out, offset + 1))
         }
         _ => None,
@@ -250,6 +252,7 @@ fn convert_single(byte: u8) -> Command {
         opcode::CSTR => Command::CastReal,
         opcode::OR => Command::Or,
         opcode::AND => Command::And,
+        opcode::PARAM => Command::NewRecord,
         _ => unreachable!(),
     }
 }
