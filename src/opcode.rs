@@ -1,4 +1,3 @@
-
 pub const ADDI: u8 = 0;
 pub const SUBI: u8 = 1;
 pub const MULI: u8 = 2;

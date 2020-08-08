@@ -75,7 +75,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                         curr_block = top.return_block;
                         string_memory.remove_strings(&top.func_mem.str_mem);
                     } else {
-                        panic!()
+                        panic!("return outside function body");
                     }
                 }
                 ControlFlow::Label => {}
@@ -93,16 +93,24 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
             Command::StoreParam(k, addr) => {
-                let record = if let Some(ref mut record) = next_record {
-                    Some(&mut record.func_mem)
+                if let Some(ref mut record) = next_record {
+                    let local_memory = Some(&mut record.func_mem);
+                    memory_store(
+                        k,
+                        *addr,
+                        &mut engine_stack,
+                        &mut global_memory,
+                        local_memory,
+                    );
                 } else {
-                    None
-                };
-                memory_store(k, *addr, &mut engine_stack, &mut global_memory, record);
-            },
+                    panic!("cannot store parameter before initializing a new activation record");
+                }
+            }
             Command::NewRecord => {
                 if next_record.is_none() {
                     next_record = Some(Record::new(curr_block));
+                } else {
+                    panic!("cannot initialize a new activation record")
                 }
             }
         }

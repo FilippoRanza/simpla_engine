@@ -183,7 +183,7 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
             let addr = get_u16(buff, index + 1)? as usize;
             let cmd = Command::StoreParam(kind, addr);
             Some((cmd, 3))
-        },
+        }
 
         _ => None,
     };
