@@ -54,7 +54,7 @@ impl ProgramFactory {
         }
 
         let functions = self.func.into_iter().map(|blk| Block::new(blk)).collect();
-        
+
         Program {
             body: Block::new(self.body),
             func: functions,

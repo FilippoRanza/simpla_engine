@@ -17,5 +17,6 @@ struct CLIArguments {
 fn main() {
     let args = CLIArguments::from_args();
     let (prog, str_mem) = program_load::load_program(&args.file).unwrap();
+    println!("{:?}", prog);
     engine::run_program(prog, str_mem);
 }

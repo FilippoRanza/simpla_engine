@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use crate::opcode;
-
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Program {
@@ -11,29 +10,25 @@ pub struct Program {
 #[derive(Debug)]
 pub struct Block {
     pub code: Vec<Command>,
-    pub labels: HashMap<usize, usize>
+    pub labels: HashMap<usize, usize>,
 }
 
 impl Block {
     pub fn new(code: Vec<Command>) -> Self {
         let labels = Self::build_labels(&code);
-        Self {
-            code,
-            labels
-        }
+        Self { code, labels }
     }
 
     fn build_labels(code: &[Command]) -> HashMap<usize, usize> {
-        code.iter().enumerate().filter_map(|(addr, cmd)| {
-            match cmd {
+        code.iter()
+            .enumerate()
+            .filter_map(|(addr, cmd)| match cmd {
                 Command::Control(ControlFlow::Label, label) => Some((*label, addr)),
-                _ => None
-            }
-        }).collect()
+                _ => None,
+            })
+            .collect()
     }
 }
-
-
 
 #[derive(Debug)]
 pub enum Command {
@@ -155,14 +150,10 @@ mod test {
             Command::Control(ControlFlow::JumpFalse, 1),
             Command::Or,
             Command::Control(ControlFlow::Label, 0),
-
-            Command::Exit
+            Command::Exit,
         ];
 
-        let results: &[(usize, usize)] = &[
-            (0, 7),
-            (1, 3)
-        ];
+        let results: &[(usize, usize)] = &[(0, 7), (1, 3)];
 
         let mapping = Block::build_labels(&code);
         assert_eq!(mapping.len(), 2);
@@ -170,7 +161,4 @@ mod test {
             assert_eq!(mapping.get(lbl).unwrap(), index);
         }
     }
-
 }
-
-

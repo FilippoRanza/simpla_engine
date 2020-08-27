@@ -1,4 +1,6 @@
-use crate::command_definition::{Command, Constant, ControlFlow, Kind, MathOperator, Program, Block};
+use crate::command_definition::{
+    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program,
+};
 use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
@@ -273,7 +275,7 @@ fn set_value<T>(glob: &mut Vec<T>, loc: Option<&mut Vec<T>>, addr: usize, value:
         let addr = addr - glob.len();
         loc[addr] = value;
     } else {
-        panic!()
+        panic!("addr: {} - {}", addr, glob.len());
     }
 }
 
@@ -381,47 +383,47 @@ where
         + PartialOrd
         + PartialEq,
 {
-    let a = stack.pop().unwrap();
-    let b = stack.pop().unwrap();
+    let rhs = stack.pop().unwrap();
+    let lhs = stack.pop().unwrap();
     match op {
         MathOperator::Add => {
-            let c = a + b;
+            let c = lhs + rhs;
             NumResult::Number(c)
         }
         MathOperator::Sub => {
-            let c = a - b;
+            let c = lhs - rhs;
             NumResult::Number(c)
         }
         MathOperator::Mul => {
-            let c = a * b;
+            let c = lhs * rhs;
             NumResult::Number(c)
         }
         MathOperator::Div => {
-            let c = a / b;
+            let c = lhs / rhs;
             NumResult::Number(c)
         }
         MathOperator::GreatEq => {
-            let c = a >= b;
+            let c = lhs >= rhs;
             NumResult::Boolean(c)
         }
         MathOperator::Greater => {
-            let c = a > b;
+            let c = lhs > rhs;
             NumResult::Boolean(c)
         }
         MathOperator::LessEq => {
-            let c = a <= b;
+            let c = lhs <= rhs;
             NumResult::Boolean(c)
         }
         MathOperator::Less => {
-            let c = a < b;
+            let c = lhs < rhs;
             NumResult::Boolean(c)
         }
         MathOperator::Equal => {
-            let c = a == b;
+            let c = lhs == rhs;
             NumResult::Boolean(c)
         }
         MathOperator::NotEqual => {
-            let c = a != b;
+            let c = lhs != rhs;
             NumResult::Boolean(c)
         }
     }
