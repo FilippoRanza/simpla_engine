@@ -1,6 +1,8 @@
 use crate::opcode;
 use std::collections::HashMap;
 
+pub type AddrSize = u16;
+
 #[derive(Debug)]
 pub struct Program {
     pub body: Block,
@@ -38,15 +40,15 @@ pub enum Command {
     CastReal,
     And,
     Or,
-    MemoryLoad(Kind, usize),
-    MemoryStore(Kind, usize),
+    MemoryLoad(Kind, AddrSize),
+    MemoryStore(Kind, AddrSize),
     Control(ControlFlow, usize),
     Input(Kind),
     Output(Kind),
     OutputLine(Kind),
     Exit,
     ConstantLoad(Constant),
-    StoreParam(Kind, usize),
+    StoreParam(Kind, AddrSize),
     NewRecord,
 }
 #[derive(Debug)]

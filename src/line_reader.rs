@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::io::{self, Error, Read};
+use std::io::{self, Error, BufRead};
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -144,6 +144,6 @@ fn fill_buffer(buff: &mut String) -> std::io::Result<()> {
     buff.clear();
     let stdin = io::stdin();
     let mut handle = stdin.lock();
-    handle.read_to_string(buff)?;
+    handle.read_line(buff)?;
     Ok(())
 }

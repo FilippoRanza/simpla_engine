@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use crate::command_definition::AddrSize;
+
+
 #[derive(Debug)]
 pub struct StringMemory {
     buff: HashMap<usize, String>,
@@ -21,8 +24,8 @@ impl StringMemory {
         key
     }
 
-    pub fn remove_strings(&mut self, s_vec: &Vec<usize>) {
-        for i in s_vec {
+    pub fn remove_strings(&mut self, string_mem: &HashMap<AddrSize, usize>) {
+        for i in string_mem.values() {
             self.buff.remove(i);
         }
     }

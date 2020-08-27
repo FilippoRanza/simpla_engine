@@ -163,10 +163,10 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
         opcode::LDI..=opcode::STRS => {
             let k = Kind::new(byte);
             let cmd = if byte < opcode::STRI {
-                let addr = get_u16(buff, index + 1)? as usize;
+                let addr = get_u16(buff, index + 1)?;
                 Command::MemoryLoad(k, addr)
             } else {
-                let addr = get_u16(buff, index + 1)? as usize;
+                let addr = get_u16(buff, index + 1)?;
                 Command::MemoryStore(k, addr)
             };
             Some((cmd, 3))
@@ -183,7 +183,7 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
         }
         opcode::STRIP..=opcode::STRSP => {
             let kind = Kind::new(byte);
-            let addr = get_u16(buff, index + 1)? as usize;
+            let addr = get_u16(buff, index + 1)?;
             let cmd = Command::StoreParam(kind, addr);
             Some((cmd, 3))
         }

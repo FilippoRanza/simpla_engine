@@ -1,10 +1,16 @@
+
+use std::collections::HashMap;
+
 use crate::command_definition::{
-    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program,
+    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program, AddrSize
 };
 use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
+
+const ADDR_SIZE_ZERO: AddrSize = 0;
+const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
 
 pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(), RuntimeError> {
     let mut stack_vect: Vec<Record> = Vec::new();
@@ -165,7 +171,7 @@ fn run_jump(j: &ControlFlow, curr: usize, next: usize, stack: &mut Vec<bool>) ->
 
 fn memory_load(
     k: &Kind,
-    addr: usize,
+    addr: AddrSize,
     stack: &mut EngineStack,
     global: &EngineMemory,
     local: Option<&EngineMemory>,
@@ -212,7 +218,7 @@ fn memory_load(
 
 fn memory_store(
     k: &Kind,
-    addr: usize,
+    addr: AddrSize,
     stack: &mut EngineStack,
     global: &mut EngineMemory,
     local: Option<&mut EngineMemory>,
@@ -257,25 +263,22 @@ fn memory_store(
     }
 }
 
-fn get_value<'a, T>(glob: &'a Vec<T>, loc: Option<&'a Vec<T>>, addr: usize) -> &'a T {
-    if glob.len() > addr {
-        &glob[addr]
-    } else if let Some(loc) = loc {
-        let addr = addr - glob.len();
-        &loc[addr]
+fn get_value<'a, T>(glob: &'a HashMap<AddrSize, T>, loc: Option<&'a HashMap<AddrSize, T>>, addr: AddrSize) -> &'a T {
+    
+    if addr & LOCAL_MASK == 0 {
+        &glob[&addr]
     } else {
-        panic!()
+        &(loc.unwrap())[&addr]
     }
+    
 }
 
-fn set_value<T>(glob: &mut Vec<T>, loc: Option<&mut Vec<T>>, addr: usize, value: T) {
-    if glob.len() > addr {
-        glob[addr] = value;
-    } else if let Some(loc) = loc {
-        let addr = addr - glob.len();
-        loc[addr] = value;
+fn set_value<T>(glob: &mut HashMap<AddrSize ,T>, loc: Option<&mut HashMap<AddrSize ,T>>, addr: AddrSize, value: T) {
+    if addr & LOCAL_MASK == 0 {
+        glob.insert(addr, value); 
     } else {
-        panic!("addr: {} - {}", addr, glob.len());
+        let loc = loc.unwrap();
+        loc.insert(addr, value);
     }
 }
 
@@ -435,18 +438,18 @@ enum NumResult<T> {
 }
 
 struct EngineMemory {
-    int_mem: Vec<i32>,
-    real_mem: Vec<f64>,
-    bool_mem: Vec<bool>,
-    str_mem: Vec<usize>,
+    int_mem: HashMap<AddrSize, i32>,
+    real_mem: HashMap<AddrSize, f64>,
+    bool_mem: HashMap<AddrSize, bool>,
+    str_mem: HashMap<AddrSize, usize>,
 }
 impl EngineMemory {
     fn new() -> Self {
         Self {
-            int_mem: vec![],
-            real_mem: vec![],
-            bool_mem: vec![],
-            str_mem: vec![],
+            int_mem: HashMap::new(),
+            real_mem: HashMap::new(),
+            bool_mem: HashMap::new(),
+            str_mem: HashMap::new(),
         }
     }
 }
