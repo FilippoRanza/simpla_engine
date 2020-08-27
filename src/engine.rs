@@ -8,6 +8,7 @@ use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
+use std::io::{stdout, Write};
 
 const ADDR_SIZE_ZERO: AddrSize = 0;
 const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
@@ -266,9 +267,10 @@ fn memory_store(
 fn get_value<'a, T>(glob: &'a HashMap<AddrSize, T>, loc: Option<&'a HashMap<AddrSize, T>>, addr: AddrSize) -> &'a T {
     
     if addr & LOCAL_MASK == 0 {
-        &glob[&addr]
+        glob.get(&addr).unwrap()
     } else {
-        &(loc.unwrap())[&addr]
+        let loc = loc.unwrap();
+        loc.get(&addr).unwrap()
     }
     
 }
@@ -348,6 +350,8 @@ fn print(s: &str, mode: OutputMode) {
         OutputMode::NewLine => println!("{}", s),
         OutputMode::SameLine => print!("{}", s),
     }
+    
+    stdout().flush().unwrap();
 }
 
 fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
