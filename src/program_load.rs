@@ -52,9 +52,12 @@ impl ProgramFactory {
         if self.curr.len() > 0 {
             self.func.push(self.curr);
         }
+
+        let functions = self.func.into_iter().map(|blk| Block::new(blk)).collect();
+        
         Program {
-            body: self.body,
-            func: self.func,
+            body: Block::new(self.body),
+            func: functions,
         }
     }
 }
@@ -354,10 +357,10 @@ mod test {
         let a = 'a' as u8;
         let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
         let (prog, mem) = parse_data(&with_string).unwrap();
-        assert_eq!(prog.body.len(), 1);
+        assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
-        let cmd = &prog.body[0];
+        let cmd = &prog.body.code[0];
         assert!(matches!(cmd, Command::ConstantLoad(ld) if
             matches!(ld, Constant::Str(s) if mem.get_string(*s) == "aaaaa")
         ));
@@ -401,10 +404,10 @@ mod test {
         }
 
         let (prog, _) = parse_data(&data).unwrap();
-        assert_eq!(prog.body.len(), 1);
+        assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
-        let cmd = &prog.body[0];
+        let cmd = &prog.body.code[0];
         assert!(matches!(cmd, Command::ConstantLoad(ld) if
             matches!(ld, Constant::Real(r) if *r == number)
         ))
@@ -428,10 +431,10 @@ mod test {
         ];
 
         let (prog, _) = parse_data(&data).unwrap();
-        assert_eq!(prog.body.len(), 4);
+        assert_eq!(prog.body.code.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
         for func in &prog.func {
-            assert_eq!(func.len(), 2);
+            assert_eq!(func.code.len(), 2);
         }
     }
 }

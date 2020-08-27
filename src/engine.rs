@@ -1,4 +1,4 @@
-use crate::command_definition::{Command, Constant, ControlFlow, Kind, MathOperator, Program};
+use crate::command_definition::{Command, Constant, ControlFlow, Kind, MathOperator, Program, Block};
 use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
@@ -17,8 +17,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
 
     let mut next_record: Option<Record> = None;
 
-    while index < curr_block.len() {
-        let cmd = &curr_block[index];
+    while index < curr_block.code.len() {
+        let cmd = &curr_block.code[index];
         index += 1;
         match cmd {
             Command::Integer(cmd) => full_math_operation(
@@ -452,12 +452,12 @@ pub enum RuntimeError {}
 
 struct Record<'a> {
     return_index: usize,
-    return_block: &'a Vec<Command>,
+    return_block: &'a Block,
     func_mem: EngineMemory,
 }
 
 impl<'a> Record<'a> {
-    fn new(return_block: &'a Vec<Command>) -> Self {
+    fn new(return_block: &'a Block) -> Self {
         Self {
             return_index: 0,
             return_block,

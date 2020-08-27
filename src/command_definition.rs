@@ -1,10 +1,39 @@
+use std::collections::HashMap;
 use crate::opcode;
+
 
 #[derive(Debug)]
 pub struct Program {
-    pub body: Vec<Command>,
-    pub func: Vec<Vec<Command>>,
+    pub body: Block,
+    pub func: Vec<Block>,
 }
+
+#[derive(Debug)]
+pub struct Block {
+    pub code: Vec<Command>,
+    pub labels: HashMap<usize, usize>
+}
+
+impl Block {
+    pub fn new(code: Vec<Command>) -> Self {
+        let labels = Self::build_labels(&code);
+        Self {
+            code,
+            labels
+        }
+    }
+
+    fn build_labels(code: &[Command]) -> HashMap<usize, usize> {
+        code.iter().enumerate().filter_map(|(addr, cmd)| {
+            match cmd {
+                Command::Control(ControlFlow::Label, label) => Some((*label, addr)),
+                _ => None
+            }
+        }).collect()
+    }
+}
+
+
 
 #[derive(Debug)]
 pub enum Command {
@@ -108,3 +137,40 @@ pub enum Constant {
     Str(usize),
     Bool(bool),
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_label_translation() {
+        // just some random code
+        let code = [
+            Command::Or,
+            Command::Control(ControlFlow::Jump, 0),
+            Command::Real(MathOperator::Add),
+            Command::Control(ControlFlow::Label, 1),
+            Command::Real(MathOperator::Add),
+            Command::Control(ControlFlow::JumpFalse, 1),
+            Command::Or,
+            Command::Control(ControlFlow::Label, 0),
+
+            Command::Exit
+        ];
+
+        let results: &[(usize, usize)] = &[
+            (0, 7),
+            (1, 3)
+        ];
+
+        let mapping = Block::build_labels(&code);
+        assert_eq!(mapping.len(), 2);
+        for (lbl, index) in results {
+            assert_eq!(mapping.get(lbl).unwrap(), index);
+        }
+    }
+
+}
+
+
