@@ -80,7 +80,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 }
                 ControlFlow::Label => {}
                 jump => {
-                    index = run_jump(jump, index, *addr, &mut engine_stack.bool_stack);
+                    let next_addr = curr_block.labels[addr];
+                    index = run_jump(jump, index, next_addr, &mut engine_stack.bool_stack);
                 }
             },
             Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory),
