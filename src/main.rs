@@ -4,6 +4,7 @@ mod line_reader;
 mod opcode;
 mod program_load;
 mod string_memory;
+mod reference_memory;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -17,6 +18,5 @@ struct CLIArguments {
 fn main() {
     let args = CLIArguments::from_args();
     let (prog, str_mem) = program_load::load_program(&args.file).unwrap();
-    println!("{:?}", prog);
     engine::run_program(prog, str_mem);
 }

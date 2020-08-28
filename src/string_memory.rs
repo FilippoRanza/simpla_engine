@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::command_definition::AddrSize;
+use crate::reference_memory::ReferenceCount;
 
 
 #[derive(Debug)]
@@ -27,36 +28,40 @@ impl StringMemory {
 
     pub fn remove_strings(&mut self, string_mem: &HashMap<AddrSize, usize>) {
         for i in string_mem.values() {
-            self.remove_reference(*i);
+            self.decrement(i);
         }
     }
 
     pub fn get_string(&mut self, index: usize) -> &str {
         let tmp = self.buff.get_mut(&index);
         let str_val = tmp.unwrap();
-        //str_val.incr_ref();
         str_val.get_str()
     }
 
-    pub fn increment_reference(&mut self, index: &usize) {
+
+
+}
+
+impl ReferenceCount for StringMemory {
+    fn increment(&mut self, index: &usize) {
         let tmp = self.buff.get_mut(index);
         let str_val = tmp.unwrap();
         str_val.incr_ref();
     }
 
-    pub fn remove_reference(&mut self, index: usize) {
-        let clean = if let Some(str_val) = self.buff.get_mut(&index) {
-            str_val.decr_ref()
-        } else {
-            false
-        };
-
-        if clean {
-            self.buff.remove(&index);
+    fn decrement(&mut self, index: &usize) {
+        if let Some(str_val) = self.buff.get_mut(index) {
+            str_val.decr_ref();
         }
     }
 
+    fn clean(&mut self) {
+        self.buff.retain(|_, v| v.ref_count > 0)
+    }
+
 }
+
+
 
 #[derive(Debug)]
 struct StringValue {
@@ -77,9 +82,10 @@ impl StringValue {
     }
 
 
-    fn decr_ref(&mut self) -> bool {
-        self.ref_count -= 1;
-        self.ref_count == 0
+    fn decr_ref(&mut self) {
+        if self.ref_count > 0 {
+            self.ref_count -= 1;
+        }
     }
 
     fn get_str(&self) -> &str {

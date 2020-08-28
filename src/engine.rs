@@ -6,6 +6,7 @@ use crate::command_definition::{
 };
 use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
+use crate::reference_memory::{ReferenceCount, ReferenceStack};
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
 use std::io::{stdout, Write};
@@ -27,8 +28,10 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
     let mut next_record: Option<Record> = None;
 
     while index < curr_block.code.len() {
+        
         let cmd = &curr_block.code[index];
         index += 1;
+        string_memory.clean();
         match cmd {
             Command::Integer(cmd) => full_math_operation(
                 &cmd,
@@ -65,7 +68,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 } else {
                     None
                 };
-                memory_store(store, *add, &mut engine_stack, &mut global_memory, local)
+                memory_store(store, *add, &mut engine_stack, &mut global_memory, local, &mut string_memory)
             }
             Command::Control(ctrl, addr) => match ctrl {
                 ControlFlow::Call => {
@@ -82,7 +85,9 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     if let Some(top) = stack_vect.pop() {
                         index = top.return_index;
                         curr_block = top.return_block;
+                
                         string_memory.remove_strings(&top.func_mem.str_mem);
+                
                     } else {
                         panic!("return outside function body");
                     }
@@ -99,7 +104,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             },
             Command::Flush(mode) => handle_flush(mode),
             Command::Exit => break,
-            Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
+            Command::ConstantLoad(load) => load_constant(load, &mut engine_stack, &mut string_memory),
             Command::StoreParam(k, addr) => {
                 if let Some(ref mut record) = next_record {
                     let local_memory = Some(&mut record.func_mem);
@@ -109,6 +114,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                         &mut engine_stack,
                         &mut global_memory,
                         local_memory,
+                        &mut string_memory
                     );
                 } else {
                     panic!("cannot store parameter before initializing a new activation record");
@@ -123,7 +129,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
         }
     }
-
+    
     Ok(())
 }
 
@@ -131,7 +137,7 @@ struct EngineStack {
     int_stack: Vec<i32>,
     real_stack: Vec<f64>,
     bool_stack: Vec<bool>,
-    str_stack: Vec<usize>,
+    str_stack: ReferenceStack,
 }
 
 impl EngineStack {
@@ -140,7 +146,7 @@ impl EngineStack {
             int_stack: vec![],
             real_stack: vec![],
             bool_stack: vec![],
-            str_stack: vec![],
+            str_stack: ReferenceStack::new(),
         }
     }
 }
@@ -211,8 +217,7 @@ fn memory_load(
                 None
             };
             let s = get_value(&global.str_mem, loc, addr);
-            str_mem.increment_reference(s);
-            stack.str_stack.push(*s)
+            stack.str_stack.push(str_mem, *s)
         }
     }
 }
@@ -223,6 +228,7 @@ fn memory_store(
     stack: &mut EngineStack,
     global: &mut EngineMemory,
     local: Option<&mut EngineMemory>,
+    str_mem: &mut StringMemory
 ) {
     match k {
         Kind::Bool => {
@@ -258,7 +264,8 @@ fn memory_store(
             } else {
                 None
             };
-            let b = stack.str_stack.pop().unwrap();
+            let b = stack.str_stack.pop(str_mem);
+            str_mem.increment(&b);
             set_value(&mut global.str_mem, loc, addr, b);
         }
     }
@@ -284,12 +291,12 @@ fn set_value<T>(glob: &mut HashMap<AddrSize ,T>, loc: Option<&mut HashMap<AddrSi
     }
 }
 
-fn load_constant(load: &Constant, stack: &mut EngineStack) {
+fn load_constant(load: &Constant, stack: &mut EngineStack, str_mem: &mut StringMemory) {
     match load {
         Constant::Bool(b) => stack.bool_stack.push(*b),
         Constant::Integer(i) => stack.int_stack.push(*i),
         Constant::Real(r) => stack.real_stack.push(*r),
-        Constant::Str(s) => stack.str_stack.push(*s),
+        Constant::Str(s) => stack.str_stack.push(str_mem, *s),
     }
 }
 
@@ -310,7 +317,8 @@ fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &m
         Kind::Str => {
             let tmp = reader.next_string().unwrap();
             let index = str_mem.insert_string(tmp);
-            stack.str_stack.push(index);
+            stack.str_stack.push(str_mem, index);
+            str_mem.decrement(&index);
         }
     }
 }
@@ -330,7 +338,7 @@ fn output(k: &Kind, stack: &mut EngineStack, str_mem: &mut StringMemory) {
             print!("{}", r);
         }
         Kind::Str => {
-            let index = stack.str_stack.pop().unwrap();
+            let index = stack.str_stack.pop(str_mem);
             let s = str_mem.get_string(index);
             print!("{}", s);
         }
@@ -439,6 +447,7 @@ struct EngineMemory {
     bool_mem: HashMap<AddrSize, bool>,
     str_mem: HashMap<AddrSize, usize>,
 }
+
 impl EngineMemory {
     fn new() -> Self {
         Self {
