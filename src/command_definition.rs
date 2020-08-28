@@ -46,7 +46,6 @@ pub enum Command {
     Input(Kind),
     Output(Kind),
     Flush(FlushMode),
-    OutputLine(Kind),
     Exit,
     ConstantLoad(Constant),
     StoreParam(Kind, AddrSize),

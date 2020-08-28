@@ -95,11 +95,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             },
             Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory),
             Command::Output(k) => {
-                output(k, &mut engine_stack, OutputMode::SameLine, &string_memory)
-            }
-            Command::OutputLine(k) => {
-                output(k, &mut engine_stack, OutputMode::NewLine, &string_memory)
-            }
+                output(k, &mut engine_stack, &string_memory)
+            },
             Command::Flush(mode) => handle_flush(mode),
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
@@ -316,43 +313,33 @@ fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &m
     }
 }
 
-enum OutputMode {
-    NewLine,
-    SameLine,
-}
-
-fn output(k: &Kind, stack: &mut EngineStack, m: OutputMode, str_mem: &StringMemory) {
+fn output(k: &Kind, stack: &mut EngineStack, str_mem: &StringMemory) {
     match k {
         Kind::Bool => {
             let b = stack.bool_stack.pop().unwrap();
-            let tmp = format!("{}", b);
-            print(&tmp, m);
+            print!("{}", b);
         }
         Kind::Integer => {
             let i = stack.int_stack.pop().unwrap();
-            let tmp = format!("{}", i);
-            print(&tmp, m);
+            print!("{}", i);
         }
         Kind::Real => {
             let r = stack.real_stack.pop().unwrap();
-            let tmp = format!("{}", r);
-            print(&tmp, m);
+            print!("{}", r);
         }
         Kind::Str => {
-            let s = stack.str_stack.pop().unwrap();
-            let s = str_mem.get_string(s);
-            print(s, m);
+            let index = stack.str_stack.pop().unwrap();
+            let s = str_mem.get_string(index);
+            print!("{}", s);
         }
     };
 }
 
-fn print(s: &str, mode: OutputMode) {
+fn handle_flush(mode: &FlushMode) {
     match mode {
-        OutputMode::NewLine => println!("{}", s),
-        OutputMode::SameLine => print!("{}", s),
+        FlushMode::Flush => stdout().flush().unwrap(),
+        FlushMode::NewLine => println!()
     }
-    
-    stdout().flush().unwrap();
 }
 
 fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
@@ -437,12 +424,7 @@ where
     }
 }
 
-fn handle_flush(mode: &FlushMode) {
-    match mode {
-        FlushMode::Flush => stdout().flush().unwrap(),
-        FlushMode::NewLine => println!()
-    }
-}
+
 
 enum NumResult<T> {
     Number(T),
