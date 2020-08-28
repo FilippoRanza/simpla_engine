@@ -45,6 +45,7 @@ pub enum Command {
     Control(ControlFlow, usize),
     Input(Kind),
     Output(Kind),
+    Flush(FlushMode),
     OutputLine(Kind),
     Exit,
     ConstantLoad(Constant),
@@ -134,6 +135,14 @@ pub enum Constant {
     Str(usize),
     Bool(bool),
 }
+
+#[derive(Debug)]
+pub enum FlushMode {
+    Flush,
+    NewLine
+}
+
+
 
 #[cfg(test)]
 mod test {

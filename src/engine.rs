@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use crate::command_definition::{
-    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program, AddrSize
+    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program, AddrSize, FlushMode
 };
 use crate::line_reader::LineReader;
 use crate::string_memory::StringMemory;
@@ -100,6 +100,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             Command::OutputLine(k) => {
                 output(k, &mut engine_stack, OutputMode::NewLine, &string_memory)
             }
+            Command::Flush(mode) => handle_flush(mode),
             Command::Exit => break,
             Command::ConstantLoad(load) => load_constant(load, &mut engine_stack),
             Command::StoreParam(k, addr) => {
@@ -433,6 +434,13 @@ where
             let c = lhs != rhs;
             NumResult::Boolean(c)
         }
+    }
+}
+
+fn handle_flush(mode: &FlushMode) {
+    match mode {
+        FlushMode::Flush => stdout().flush().unwrap(),
+        FlushMode::NewLine => println!()
     }
 }
 
