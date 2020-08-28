@@ -1,19 +1,42 @@
 use std::collections::VecDeque;
 use std::io::{self, Error, BufRead};
 use std::str::FromStr;
+use std::fmt;
 
 #[derive(Debug)]
-pub enum ReadError<'a> {
+pub enum ReadError {
     InputOutput(Error),
-    IntParseError(&'a str),
-    RealParseError(&'a str),
-    BoolParseError(&'a str),
+    IntParseError(String),
+    RealParseError(String),
+    BoolParseError(String),
     MissingInteger,
     MissingReal,
     MissingBoolean,
 }
 
-impl<'a> From<Error> for ReadError<'a> {
+impl fmt::Display for ReadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InputOutput(io_err) => write!(f, "IO Error: {}", io_err),
+            Self::IntParseError(err) => write!(f, "{}", parse_error_mgs(err, "integer")),
+            Self::RealParseError(err) => write!(f, "{}", parse_error_mgs(err, "real")),
+            Self::BoolParseError(err) => write!(f, "{}", parse_error_mgs(err, "boolean")),
+            Self::MissingBoolean => write!(f, "{}", missing_error_msg("boolean")),
+            Self::MissingInteger => write!(f, "{}", missing_error_msg("integer")),
+            Self::MissingReal => write!(f, "{}", missing_error_msg("real")),
+        }
+    }
+}
+
+fn missing_error_msg(expect: &str) -> String {
+    format!("EOF Error: {} was expectd", expect)
+}
+
+fn parse_error_mgs(token: &str, expect: &str) -> String {
+    format!("Parse Error: `{}` cannot be converted into type {}", token, expect)
+}
+
+impl From<Error> for ReadError {
     fn from(e: Error) -> Self {
         Self::InputOutput(e)
     }
@@ -32,7 +55,7 @@ enum ParseError<'a> {
 }
 
 impl<'a> ParseError<'a> {
-    fn to_read_error(self, k: Kind) -> ReadError<'a> {
+    fn to_read_error(self, k: Kind) -> ReadError {
         match self {
             Self::Missing => match k {
                 Kind::Integer => ReadError::MissingInteger,
@@ -40,9 +63,9 @@ impl<'a> ParseError<'a> {
                 Kind::Boolean => ReadError::MissingBoolean,
             },
             Self::Parse(s) => match k {
-                Kind::Integer => ReadError::IntParseError(s),
-                Kind::Real => ReadError::RealParseError(s),
-                Kind::Boolean => ReadError::BoolParseError(s),
+                Kind::Integer => ReadError::IntParseError(s.to_owned()),
+                Kind::Real => ReadError::RealParseError(s.to_owned()),
+                Kind::Boolean => ReadError::BoolParseError(s.to_owned()),
             },
             Self::InputOutput(io) => ReadError::InputOutput(io),
         }
@@ -108,7 +131,7 @@ impl LineReader {
     }
 }
 
-fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, ReadError<'a>> {
+fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, ReadError> {
     match res {
         Ok(t) => Ok(t),
         Err(err) => Err(err.to_read_error(k)),

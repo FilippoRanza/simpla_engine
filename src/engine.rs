@@ -4,12 +4,13 @@ use std::collections::HashMap;
 use crate::command_definition::{
     Block, Command, Constant, ControlFlow, Kind, MathOperator, Program, AddrSize, FlushMode
 };
-use crate::line_reader::LineReader;
+use crate::line_reader::{LineReader, ReadError};
 use crate::string_memory::StringMemory;
 use crate::reference_memory::{ReferenceCount, ReferenceStack};
 use std::cmp::{PartialEq, PartialOrd};
 use std::ops::{Add, Div, Mul, Sub};
 use std::io::{stdout, Write};
+use std::fmt;
 
 const ADDR_SIZE_ZERO: AddrSize = 0;
 const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
@@ -85,9 +86,9 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     if let Some(top) = stack_vect.pop() {
                         index = top.return_index;
                         curr_block = top.return_block;
-                        println!("{:?}", string_memory);
+                        
                         string_memory.remove_strings(&top.func_mem.str_mem);
-                        println!("{:?}", string_memory);
+                        
                     } else {
                         panic!("return outside function body");
                     }
@@ -98,7 +99,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     index = run_jump(jump, index, next_addr, &mut engine_stack.bool_stack);
                 }
             },
-            Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory),
+            Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory)?,
             Command::Output(k) => {
                 output(k, &mut engine_stack, &mut string_memory)
             },
@@ -320,27 +321,28 @@ fn load_constant(load: &Constant, stack: &mut EngineStack, str_mem: &mut StringM
     }
 }
 
-fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &mut StringMemory) {
+fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &mut StringMemory) -> Result<(), ReadError> {
     match k {
         Kind::Bool => {
-            let tmp = reader.next_bool().unwrap();
+            let tmp = reader.next_bool()?;
             stack.bool_stack.push(tmp);
         }
         Kind::Integer => {
-            let tmp = reader.next_i32().unwrap();
+            let tmp = reader.next_i32()?;
             stack.int_stack.push(tmp);
         }
         Kind::Real => {
-            let tmp = reader.next_f64().unwrap();
+            let tmp = reader.next_f64()?;
             stack.real_stack.push(tmp);
         }
         Kind::Str => {
-            let tmp = reader.next_string().unwrap();
+            let tmp = reader.next_string()?;
             let index = str_mem.insert_string(tmp);
             stack.str_stack.push(str_mem, index);
             str_mem.decrement(&index);
         }
     }
+    Ok(())
 }
 
 fn output(k: &Kind, stack: &mut EngineStack, str_mem: &mut StringMemory) {
@@ -479,7 +481,25 @@ impl EngineMemory {
     }
 }
 
-pub enum RuntimeError {}
+pub enum RuntimeError {
+    ReadError(ReadError)
+}
+
+impl fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ReadError(io_err) => write!(f, "{}", io_err),
+        }
+    }
+}
+
+
+impl std::convert::From<ReadError> for RuntimeError {
+    fn from(e: ReadError) -> RuntimeError {
+        RuntimeError::ReadError(e)
+    }
+}
+
 
 struct Record<'a> {
     return_index: usize,
