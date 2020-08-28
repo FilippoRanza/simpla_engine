@@ -85,9 +85,9 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     if let Some(top) = stack_vect.pop() {
                         index = top.return_index;
                         curr_block = top.return_block;
-                
+                        println!("{:?}", string_memory);
                         string_memory.remove_strings(&top.func_mem.str_mem);
-                
+                        println!("{:?}", string_memory);
                     } else {
                         panic!("return outside function body");
                     }
@@ -129,7 +129,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -266,8 +266,15 @@ fn memory_store(
             };
             let b = stack.str_stack.pop(str_mem);
             str_mem.increment(&b);
-            set_value(&mut global.str_mem, loc, addr, b);
+            let prev = set_value(&mut global.str_mem, loc, addr, b);
+            clean_prev(prev, str_mem);
         }
+    }
+}
+
+fn clean_prev(prev: Option<usize>, str_mem: &mut StringMemory) {
+    if let Some(prev) = prev {
+        str_mem.decrement(&prev);
     }
 }
 
@@ -282,13 +289,26 @@ fn get_value<'a, T>(glob: &'a HashMap<AddrSize, T>, loc: Option<&'a HashMap<Addr
     
 }
 
-fn set_value<T>(glob: &mut HashMap<AddrSize ,T>, loc: Option<&mut HashMap<AddrSize ,T>>, addr: AddrSize, value: T) {
+fn set_value<'a, T>(glob: &'a mut HashMap<AddrSize ,T>, loc: Option<&'a mut HashMap<AddrSize ,T>>, addr: AddrSize, value: T) -> Option<T>
+where T: Copy  {
     if addr & LOCAL_MASK == 0 {
-        glob.insert(addr, value); 
+        insert_and_get_prev(glob, addr, value)
     } else {
         let loc = loc.unwrap();
-        loc.insert(addr, value);
+        insert_and_get_prev(loc, addr, value)
     }
+
+}
+
+fn insert_and_get_prev<T>(map: &mut HashMap<AddrSize, T>, addr: AddrSize, value: T) -> Option<T> 
+where T: Copy {
+    let output = if let Some(prev) = map.get(&addr) {
+        Some(*prev)
+    } else {
+        None
+    };
+    map.insert(addr, value);
+    output
 }
 
 fn load_constant(load: &Constant, stack: &mut EngineStack, str_mem: &mut StringMemory) {
