@@ -57,7 +57,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 } else {
                     None
                 };
-                memory_load(load, *add, &mut engine_stack, &global_memory, local);
+                memory_load(load, *add, &mut engine_stack, &global_memory, local, &mut string_memory);
             }
             Command::MemoryStore(store, add) => {
                 let local = if let Some(last) = stack_vect.last_mut() {
@@ -174,6 +174,7 @@ fn memory_load(
     stack: &mut EngineStack,
     global: &EngineMemory,
     local: Option<&EngineMemory>,
+    str_mem: &mut StringMemory
 ) {
     match k {
         Kind::Bool => {
@@ -210,6 +211,7 @@ fn memory_load(
                 None
             };
             let s = get_value(&global.str_mem, loc, addr);
+            str_mem.increment_reference(s);
             stack.str_stack.push(*s)
         }
     }

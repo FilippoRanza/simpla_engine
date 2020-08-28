@@ -34,10 +34,15 @@ impl StringMemory {
     pub fn get_string(&mut self, index: usize) -> &str {
         let tmp = self.buff.get_mut(&index);
         let str_val = tmp.unwrap();
-        str_val.incr_ref();
+        //str_val.incr_ref();
         str_val.get_str()
     }
 
+    pub fn increment_reference(&mut self, index: &usize) {
+        let tmp = self.buff.get_mut(index);
+        let str_val = tmp.unwrap();
+        str_val.incr_ref();
+    }
 
     pub fn remove_reference(&mut self, index: usize) {
         let clean = if let Some(str_val) = self.buff.get_mut(&index) {
@@ -63,7 +68,7 @@ impl StringValue {
     fn new(string: String) -> Self {
         Self {
             string,
-            ref_count: 0
+            ref_count: 1
         }
     }
 
