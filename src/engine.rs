@@ -95,7 +95,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             },
             Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory),
             Command::Output(k) => {
-                output(k, &mut engine_stack, &string_memory)
+                output(k, &mut engine_stack, &mut string_memory)
             },
             Command::Flush(mode) => handle_flush(mode),
             Command::Exit => break,
@@ -313,7 +313,7 @@ fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &m
     }
 }
 
-fn output(k: &Kind, stack: &mut EngineStack, str_mem: &StringMemory) {
+fn output(k: &Kind, stack: &mut EngineStack, str_mem: &mut StringMemory) {
     match k {
         Kind::Bool => {
             let b = stack.bool_stack.pop().unwrap();

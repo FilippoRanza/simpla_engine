@@ -357,7 +357,7 @@ mod test {
         // 5 chars
         let a = 'a' as u8;
         let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
-        let (prog, mem) = parse_data(&with_string).unwrap();
+        let (prog, mut mem) = parse_data(&with_string).unwrap();
         assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
