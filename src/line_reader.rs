@@ -145,5 +145,6 @@ fn fill_buffer(buff: &mut String) -> std::io::Result<()> {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     handle.read_line(buff)?;
+    buff.pop();
     Ok(())
 }
