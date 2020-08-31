@@ -1,4 +1,3 @@
-
 pub type ReferenceIndex = usize;
 
 pub trait ReferenceCount {
@@ -7,17 +6,13 @@ pub trait ReferenceCount {
     fn clean(&mut self);
 }
 
-
 pub struct ReferenceStack {
     stack: Vec<usize>,
 }
 
 impl ReferenceStack {
-
     pub fn new() -> Self {
-        Self {
-            stack: vec![]
-        }
+        Self { stack: vec![] }
     }
 
     pub fn push(&mut self, ref_count: &mut dyn ReferenceCount, index: ReferenceIndex) {

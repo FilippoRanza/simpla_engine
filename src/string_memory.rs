@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::command_definition::AddrSize;
 use crate::reference_memory::ReferenceCount;
 
-
 #[derive(Debug)]
 pub struct StringMemory {
     buff: HashMap<usize, StringValue>,
@@ -37,9 +36,6 @@ impl StringMemory {
         let str_val = tmp.unwrap();
         str_val.get_str()
     }
-
-
-
 }
 
 impl ReferenceCount for StringMemory {
@@ -58,29 +54,25 @@ impl ReferenceCount for StringMemory {
     fn clean(&mut self) {
         self.buff.retain(|_, v| v.ref_count > 0)
     }
-
 }
-
-
 
 #[derive(Debug)]
 struct StringValue {
     string: String,
-    ref_count: usize
+    ref_count: usize,
 }
 
 impl StringValue {
     fn new(string: String) -> Self {
         Self {
             string,
-            ref_count: 1
+            ref_count: 1,
         }
     }
 
     fn incr_ref(&mut self) {
         self.ref_count += 1;
     }
-
 
     fn decr_ref(&mut self) {
         if self.ref_count > 0 {
@@ -92,4 +84,3 @@ impl StringValue {
         &self.string
     }
 }
-

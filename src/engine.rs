@@ -1,16 +1,16 @@
-
 use std::collections::HashMap;
 
 use crate::command_definition::{
-    Block, Command, Constant, ControlFlow, Kind, MathOperator, Program, AddrSize, FlushMode
+    AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, Program,
 };
+use crate::for_loop_stack::ForLoopStack;
 use crate::line_reader::{LineReader, ReadError};
-use crate::string_memory::StringMemory;
 use crate::reference_memory::{ReferenceCount, ReferenceStack};
+use crate::string_memory::StringMemory;
 use std::cmp::{PartialEq, PartialOrd};
-use std::ops::{Add, Div, Mul, Sub};
-use std::io::{stdout, Write};
 use std::fmt;
+use std::io::{stdout, Write};
+use std::ops::{Add, Div, Mul, Sub};
 
 const ADDR_SIZE_ZERO: AddrSize = 0;
 const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
@@ -27,9 +27,9 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
     let mut reader = LineReader::new(true);
 
     let mut next_record: Option<Record> = None;
+    let mut for_loop_stack = ForLoopStack::new();
 
     while index < curr_block.code.len() {
-        
         let cmd = &curr_block.code[index];
         index += 1;
         string_memory.clean();
@@ -61,7 +61,14 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 } else {
                     None
                 };
-                memory_load(load, *add, &mut engine_stack, &global_memory, local, &mut string_memory);
+                memory_load(
+                    load,
+                    *add,
+                    &mut engine_stack,
+                    &global_memory,
+                    local,
+                    &mut string_memory,
+                );
             }
             Command::MemoryStore(store, add) => {
                 let local = if let Some(last) = stack_vect.last_mut() {
@@ -69,7 +76,14 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 } else {
                     None
                 };
-                memory_store(store, *add, &mut engine_stack, &mut global_memory, local, &mut string_memory)
+                memory_store(
+                    store,
+                    *add,
+                    &mut engine_stack,
+                    &mut global_memory,
+                    local,
+                    &mut string_memory,
+                )
             }
             Command::Control(ctrl, addr) => match ctrl {
                 ControlFlow::Call => {
@@ -86,9 +100,8 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     if let Some(top) = stack_vect.pop() {
                         index = top.return_index;
                         curr_block = top.return_block;
-                        
+
                         string_memory.remove_strings(&top.func_mem.str_mem);
-                        
                     } else {
                         panic!("return outside function body");
                     }
@@ -100,12 +113,12 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 }
             },
             Command::Input(k) => input(k, &mut engine_stack, &mut reader, &mut string_memory)?,
-            Command::Output(k) => {
-                output(k, &mut engine_stack, &mut string_memory)
-            },
+            Command::Output(k) => output(k, &mut engine_stack, &mut string_memory),
             Command::Flush(mode) => handle_flush(mode),
             Command::Exit => break,
-            Command::ConstantLoad(load) => load_constant(load, &mut engine_stack, &mut string_memory),
+            Command::ConstantLoad(load) => {
+                load_constant(load, &mut engine_stack, &mut string_memory)
+            }
             Command::StoreParam(k, addr) => {
                 if let Some(ref mut record) = next_record {
                     let local_memory = Some(&mut record.func_mem);
@@ -115,7 +128,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                         &mut engine_stack,
                         &mut global_memory,
                         local_memory,
-                        &mut string_memory
+                        &mut string_memory,
                     );
                 } else {
                     panic!("cannot store parameter before initializing a new activation record");
@@ -127,6 +140,9 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 } else {
                     panic!("cannot initialize a new activation record")
                 }
+            }
+            Command::ForControl(control) => {
+                for_loop_stack.process_command(control, &mut engine_stack.int_stack)
             }
         }
     }
@@ -181,7 +197,7 @@ fn memory_load(
     stack: &mut EngineStack,
     global: &EngineMemory,
     local: Option<&EngineMemory>,
-    str_mem: &mut StringMemory
+    str_mem: &mut StringMemory,
 ) {
     match k {
         Kind::Bool => {
@@ -229,7 +245,7 @@ fn memory_store(
     stack: &mut EngineStack,
     global: &mut EngineMemory,
     local: Option<&mut EngineMemory>,
-    str_mem: &mut StringMemory
+    str_mem: &mut StringMemory,
 ) {
     match k {
         Kind::Bool => {
@@ -279,30 +295,40 @@ fn clean_prev(prev: Option<usize>, str_mem: &mut StringMemory) {
     }
 }
 
-fn get_value<'a, T>(glob: &'a HashMap<AddrSize, T>, loc: Option<&'a HashMap<AddrSize, T>>, addr: AddrSize) -> &'a T {
-    
+fn get_value<'a, T>(
+    glob: &'a HashMap<AddrSize, T>,
+    loc: Option<&'a HashMap<AddrSize, T>>,
+    addr: AddrSize,
+) -> &'a T {
     if addr & LOCAL_MASK == 0 {
         glob.get(&addr).unwrap()
     } else {
         let loc = loc.unwrap();
         loc.get(&addr).unwrap()
     }
-    
 }
 
-fn set_value<'a, T>(glob: &'a mut HashMap<AddrSize ,T>, loc: Option<&'a mut HashMap<AddrSize ,T>>, addr: AddrSize, value: T) -> Option<T>
-where T: Copy  {
+fn set_value<'a, T>(
+    glob: &'a mut HashMap<AddrSize, T>,
+    loc: Option<&'a mut HashMap<AddrSize, T>>,
+    addr: AddrSize,
+    value: T,
+) -> Option<T>
+where
+    T: Copy,
+{
     if addr & LOCAL_MASK == 0 {
         insert_and_get_prev(glob, addr, value)
     } else {
         let loc = loc.unwrap();
         insert_and_get_prev(loc, addr, value)
     }
-
 }
 
-fn insert_and_get_prev<T>(map: &mut HashMap<AddrSize, T>, addr: AddrSize, value: T) -> Option<T> 
-where T: Copy {
+fn insert_and_get_prev<T>(map: &mut HashMap<AddrSize, T>, addr: AddrSize, value: T) -> Option<T>
+where
+    T: Copy,
+{
     let output = if let Some(prev) = map.get(&addr) {
         Some(*prev)
     } else {
@@ -321,7 +347,12 @@ fn load_constant(load: &Constant, stack: &mut EngineStack, str_mem: &mut StringM
     }
 }
 
-fn input(k: &Kind, stack: &mut EngineStack, reader: &mut LineReader, str_mem: &mut StringMemory) -> Result<(), ReadError> {
+fn input(
+    k: &Kind,
+    stack: &mut EngineStack,
+    reader: &mut LineReader,
+    str_mem: &mut StringMemory,
+) -> Result<(), ReadError> {
     match k {
         Kind::Bool => {
             let tmp = reader.next_bool()?;
@@ -370,7 +401,7 @@ fn output(k: &Kind, stack: &mut EngineStack, str_mem: &mut StringMemory) {
 fn handle_flush(mode: &FlushMode) {
     match mode {
         FlushMode::Flush => stdout().flush().unwrap(),
-        FlushMode::NewLine => println!()
+        FlushMode::NewLine => println!(),
     }
 }
 
@@ -456,8 +487,6 @@ where
     }
 }
 
-
-
 enum NumResult<T> {
     Number(T),
     Boolean(bool),
@@ -482,7 +511,7 @@ impl EngineMemory {
 }
 
 pub enum RuntimeError {
-    ReadError(ReadError)
+    ReadError(ReadError),
 }
 
 impl fmt::Display for RuntimeError {
@@ -493,13 +522,11 @@ impl fmt::Display for RuntimeError {
     }
 }
 
-
 impl std::convert::From<ReadError> for RuntimeError {
     fn from(e: ReadError) -> RuntimeError {
         RuntimeError::ReadError(e)
     }
 }
-
 
 struct Record<'a> {
     return_index: usize,

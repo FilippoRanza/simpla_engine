@@ -150,9 +150,15 @@ fn parse_data(data: &[u8]) -> Result<(Program, StringMemory), LoadError> {
 
 fn is_single_command(byte: u8) -> Option<Command> {
     match byte {
-        opcode::ADDI..=opcode::AND | opcode::RDI..=opcode::WRS | opcode::FLN | opcode::FLU | opcode::EXT | opcode::PARAM => {
-            Some(convert_single(byte))
-        }
+        opcode::ADDI..=opcode::AND
+        | opcode::RDI..=opcode::WRS
+        | opcode::FLN
+        | opcode::FLU
+        | opcode::EXT
+        | opcode::PARAM
+        | opcode::BFOR
+        | opcode::CFOR
+        | opcode::EFOR => Some(convert_single(byte)),
         _ => None,
     }
 }
@@ -257,6 +263,9 @@ fn convert_single(byte: u8) -> Command {
         opcode::OR => Command::Or,
         opcode::AND => Command::And,
         opcode::PARAM => Command::NewRecord,
+        opcode::BFOR => Command::ForControl(ForControl::New),
+        opcode::CFOR => Command::ForControl(ForControl::Check),
+        opcode::EFOR => Command::ForControl(ForControl::End),
         _ => unreachable!(),
     }
 }

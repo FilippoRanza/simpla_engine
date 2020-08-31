@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
-use std::io::{self, Error, BufRead};
-use std::str::FromStr;
 use std::fmt;
+use std::io::{self, BufRead, Error};
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum ReadError {
@@ -33,7 +33,10 @@ fn missing_error_msg(expect: &str) -> String {
 }
 
 fn parse_error_mgs(token: &str, expect: &str) -> String {
-    format!("Parse Error: `{}` cannot be converted into type {}", token, expect)
+    format!(
+        "Parse Error: `{}` cannot be converted into type {}",
+        token, expect
+    )
 }
 
 impl From<Error> for ReadError {

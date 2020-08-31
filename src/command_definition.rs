@@ -46,6 +46,7 @@ pub enum Command {
     Input(Kind),
     Output(Kind),
     Flush(FlushMode),
+    ForControl(ForControl),
     Exit,
     ConstantLoad(Constant),
     StoreParam(Kind, AddrSize),
@@ -138,10 +139,15 @@ pub enum Constant {
 #[derive(Debug)]
 pub enum FlushMode {
     Flush,
-    NewLine
+    NewLine,
 }
 
-
+#[derive(Debug)]
+pub enum ForControl {
+    New,
+    End,
+    Check,
+}
 
 #[cfg(test)]
 mod test {
