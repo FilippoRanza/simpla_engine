@@ -156,9 +156,7 @@ fn is_single_command(byte: u8) -> Option<Command> {
         | opcode::FLU
         | opcode::EXT
         | opcode::PARAM
-        | opcode::BFOR
-        | opcode::CFOR
-        | opcode::EFOR => Some(convert_single(byte)),
+        | opcode::BFOR..=opcode::NOT => Some(convert_single(byte)),
         _ => None,
     }
 }
@@ -266,6 +264,9 @@ fn convert_single(byte: u8) -> Command {
         opcode::BFOR => Command::ForControl(ForControl::New),
         opcode::CFOR => Command::ForControl(ForControl::Check),
         opcode::EFOR => Command::ForControl(ForControl::End),
+        opcode::NEGI => Command::Unary(Kind::Integer),
+        opcode::NEGR => Command::Unary(Kind::Real),
+        opcode::NOT => Command::Unary(Kind::Bool),
         _ => unreachable!(),
     }
 }

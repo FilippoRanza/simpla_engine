@@ -51,6 +51,7 @@ pub enum Command {
     ConstantLoad(Constant),
     StoreParam(Kind, AddrSize),
     NewRecord,
+    Unary(Kind)
 }
 #[derive(Debug)]
 pub enum Kind {

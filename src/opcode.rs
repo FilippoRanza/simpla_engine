@@ -65,3 +65,6 @@ pub const FUNC: u8 = 60;
 pub const BFOR: u8 = 61;
 pub const CFOR: u8 = 62;
 pub const EFOR: u8 = 63;
+pub const NEGI: u8 = 64;
+pub const NEGR: u8 = 65;
+pub const NOT: u8 = 66;

@@ -144,11 +144,31 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             Command::ForControl(control) => {
                 for_loop_stack.process_command(control, &mut engine_stack.int_stack)
             }
+            Command::Unary(kind) => unary_operator(kind, &mut engine_stack)
         }
     }
 
     Ok(())
 }
+
+fn unary_operator(kind: &Kind, stack: &mut EngineStack) {
+    match kind {
+        Kind::Bool => {
+            let tmp = stack.bool_stack.pop().unwrap();
+            stack.bool_stack.push(!tmp);
+        },
+        Kind::Integer => {
+            let tmp = stack.int_stack.pop().unwrap();
+            stack.int_stack.push(-tmp);
+        },
+        Kind::Real => {
+            let tmp = stack.real_stack.pop().unwrap();
+            stack.real_stack.push(-tmp);
+        },
+        _ => unreachable!()
+    }
+}
+
 
 struct EngineStack {
     int_stack: Vec<i32>,
