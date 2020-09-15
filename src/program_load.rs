@@ -250,8 +250,8 @@ fn convert_constant(
 fn convert_single(byte: u8) -> Command {
     match byte {
         opcode::EXT => Command::Exit,
-        opcode::ADDI..=opcode::NEI => Command::Integer(MathOperator::new(byte)),
-        opcode::ADDR..=opcode::NER => Command::Real(MathOperator::new(byte - 10)),
+        opcode::ADDI..=opcode::NEI => Command::Integer(Operator::new(byte)),
+        opcode::ADDR..=opcode::NER => Command::Real(Operator::new(byte - 10)),
         opcode::RDI..=opcode::RDS => Command::Input(Kind::new(byte)),
         opcode::WRI..=opcode::WRS => Command::Output(Kind::new(byte)),
         opcode::FLU => Command::Flush(FlushMode::Flush),

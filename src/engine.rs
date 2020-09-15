@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::command_definition::{
-    AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, Program,
+    AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, Operator,
+    Program, RelationalOperator,
 };
 use crate::for_loop_stack::ForLoopStack;
 use crate::line_reader::{LineReader, ReadError};
@@ -144,7 +145,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
             Command::ForControl(control) => {
                 for_loop_stack.process_command(control, &mut engine_stack.int_stack)
             }
-            Command::Unary(kind) => unary_operator(kind, &mut engine_stack)
+            Command::Unary(kind) => unary_operator(kind, &mut engine_stack),
         }
     }
 
@@ -156,19 +157,18 @@ fn unary_operator(kind: &Kind, stack: &mut EngineStack) {
         Kind::Bool => {
             let tmp = stack.bool_stack.pop().unwrap();
             stack.bool_stack.push(!tmp);
-        },
+        }
         Kind::Integer => {
             let tmp = stack.int_stack.pop().unwrap();
             stack.int_stack.push(-tmp);
-        },
+        }
         Kind::Real => {
             let tmp = stack.real_stack.pop().unwrap();
             stack.real_stack.push(-tmp);
-        },
-        _ => unreachable!()
+        }
+        _ => unreachable!(),
     }
 }
-
 
 struct EngineStack {
     int_stack: Vec<i32>,
@@ -436,7 +436,7 @@ fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
     stack.push(c);
 }
 
-fn full_math_operation<T>(op: &MathOperator, numbers: &mut Vec<T>, booleans: &mut Vec<bool>)
+fn full_math_operation<T>(op: &Operator, numbers: &mut Vec<T>, booleans: &mut Vec<bool>)
 where
     T: Add<Output = T>
         + Sub<Output = T>
@@ -445,71 +445,46 @@ where
         + PartialOrd
         + PartialEq,
 {
-    let res = math_operation(op, numbers);
-    match res {
-        NumResult::Number(n) => numbers.push(n),
-        NumResult::Boolean(b) => booleans.push(b),
-    }
+    match op {
+        Operator::Math(m) => {
+            let res = math_operation(m, numbers);
+            numbers.push(res);
+        }
+        Operator::Rel(r) => {
+            let res = rel_operation(r, numbers);
+            booleans.push(res);
+        }
+    };
 }
 
-fn math_operation<T>(op: &MathOperator, stack: &mut Vec<T>) -> NumResult<T>
+fn math_operation<T>(op: &MathOperator, stack: &mut Vec<T>) -> T
 where
-    T: Add<Output = T>
-        + Sub<Output = T>
-        + Mul<Output = T>
-        + Div<Output = T>
-        + PartialOrd
-        + PartialEq,
+    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>,
 {
     let rhs = stack.pop().unwrap();
     let lhs = stack.pop().unwrap();
     match op {
-        MathOperator::Add => {
-            let c = lhs + rhs;
-            NumResult::Number(c)
-        }
-        MathOperator::Sub => {
-            let c = lhs - rhs;
-            NumResult::Number(c)
-        }
-        MathOperator::Mul => {
-            let c = lhs * rhs;
-            NumResult::Number(c)
-        }
-        MathOperator::Div => {
-            let c = lhs / rhs;
-            NumResult::Number(c)
-        }
-        MathOperator::GreatEq => {
-            let c = lhs >= rhs;
-            NumResult::Boolean(c)
-        }
-        MathOperator::Greater => {
-            let c = lhs > rhs;
-            NumResult::Boolean(c)
-        }
-        MathOperator::LessEq => {
-            let c = lhs <= rhs;
-            NumResult::Boolean(c)
-        }
-        MathOperator::Less => {
-            let c = lhs < rhs;
-            NumResult::Boolean(c)
-        }
-        MathOperator::Equal => {
-            let c = lhs == rhs;
-            NumResult::Boolean(c)
-        }
-        MathOperator::NotEqual => {
-            let c = lhs != rhs;
-            NumResult::Boolean(c)
-        }
+        MathOperator::Add => lhs + rhs,
+        MathOperator::Sub => lhs - rhs,
+        MathOperator::Mul => lhs * rhs,
+        MathOperator::Div => lhs / rhs,
     }
 }
 
-enum NumResult<T> {
-    Number(T),
-    Boolean(bool),
+fn rel_operation<T>(op: &RelationalOperator, stack: &mut Vec<T>) -> bool
+where
+    T: PartialOrd + PartialEq,
+{
+    let rhs = stack.pop().unwrap();
+    let lhs = stack.pop().unwrap();
+    match op {
+        RelationalOperator::GreatEq => lhs >= rhs,
+        RelationalOperator::Greater => lhs > rhs,
+        RelationalOperator::LessEq => lhs <= rhs,
+        RelationalOperator::Less => lhs < rhs,
+        RelationalOperator::Equal => lhs == rhs,
+        RelationalOperator::NotEqual => lhs != rhs,
+    }
 }
 
 struct EngineMemory {

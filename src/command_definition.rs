@@ -34,8 +34,8 @@ impl Block {
 
 #[derive(Debug)]
 pub enum Command {
-    Integer(MathOperator),
-    Real(MathOperator),
+    Integer(Operator),
+    Real(Operator),
     CastInt,
     CastReal,
     And,
@@ -51,7 +51,7 @@ pub enum Command {
     ConstantLoad(Constant),
     StoreParam(Kind, AddrSize),
     NewRecord,
-    Unary(Kind)
+    Unary(Kind),
 }
 #[derive(Debug)]
 pub enum Kind {
@@ -74,17 +74,51 @@ impl Kind {
 }
 
 #[derive(Debug)]
-pub enum MathOperator {
-    Add,
-    Sub,
-    Mul,
-    Div,
+pub enum Operator {
+    Math(MathOperator),
+    Rel(RelationalOperator),
+}
+
+impl Operator {
+    pub fn new(b: u8) -> Self {
+        match b {
+            0..=3 => Self::Math(MathOperator::new(b)),
+            4..=9 => Self::Rel(RelationalOperator::new(b)),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum RelationalOperator {
     GreatEq,
     Greater,
     LessEq,
     Less,
     Equal,
     NotEqual,
+}
+
+impl RelationalOperator {
+    pub fn new(b: u8) -> Self {
+        match b {
+            4 => Self::GreatEq,
+            5 => Self::Greater,
+            6 => Self::LessEq,
+            7 => Self::Less,
+            8 => Self::Equal,
+            9 => Self::NotEqual,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MathOperator {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
 impl MathOperator {
@@ -94,12 +128,6 @@ impl MathOperator {
             1 => Self::Sub,
             2 => Self::Mul,
             3 => Self::Div,
-            4 => Self::GreatEq,
-            5 => Self::Greater,
-            6 => Self::LessEq,
-            7 => Self::Less,
-            8 => Self::Equal,
-            9 => Self::NotEqual,
             _ => unreachable!(),
         }
     }
@@ -161,9 +189,9 @@ mod test {
         let code = [
             Command::Or,
             Command::Control(ControlFlow::Jump, 0),
-            Command::Real(MathOperator::Add),
+            Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::Label, 1),
-            Command::Real(MathOperator::Add),
+            Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::JumpFalse, 1),
             Command::Or,
             Command::Control(ControlFlow::Label, 0),
