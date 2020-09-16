@@ -267,6 +267,8 @@ fn convert_single(byte: u8) -> Command {
         opcode::NEGI => Command::Unary(Kind::Integer),
         opcode::NEGR => Command::Unary(Kind::Real),
         opcode::NOT => Command::Unary(Kind::Bool),
+        opcode::GEQS..=opcode::NES => Command::StrCompare(RelationalOperator::new(byte - 63)),
+        opcode::GEQB..=opcode::NEB => Command::BoolCompare(RelationalOperator::new(byte - 69)),
         _ => unreachable!(),
     }
 }
