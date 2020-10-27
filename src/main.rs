@@ -11,8 +11,9 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
+#[structopt(about = "Execute a Simpla program")]
 struct CLIArguments {
-    #[structopt(name = "FILE")]
+    #[structopt(name = "Bytecode File", help = "Simpla bytecode file")]
     file: PathBuf,
 }
 

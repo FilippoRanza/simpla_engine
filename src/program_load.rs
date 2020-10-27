@@ -156,7 +156,8 @@ fn is_single_command(byte: u8) -> Option<Command> {
         | opcode::FLU
         | opcode::EXT
         | opcode::PARAM
-        | opcode::BFOR..=opcode::NOT => Some(convert_single(byte)),
+        | opcode::BFOR..=opcode::NOT 
+        | opcode::GEQS..=opcode::NEB => Some(convert_single(byte)),
         _ => None,
     }
 }
@@ -267,6 +268,8 @@ fn convert_single(byte: u8) -> Command {
         opcode::NEGI => Command::Unary(Kind::Integer),
         opcode::NEGR => Command::Unary(Kind::Real),
         opcode::NOT => Command::Unary(Kind::Bool),
+        opcode::GEQS..=opcode::NES => Command::StrCompare(RelationalOperator::new(byte - 63)),
+        opcode::GEQB..=opcode::NEB => Command::BoolCompare(RelationalOperator::new(byte - 69)),
         _ => unreachable!(),
     }
 }

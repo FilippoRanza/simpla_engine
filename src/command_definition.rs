@@ -52,6 +52,8 @@ pub enum Command {
     StoreParam(Kind, AddrSize),
     NewRecord,
     Unary(Kind),
+    StrCompare(RelationalOperator),
+    BoolCompare(RelationalOperator)
 }
 #[derive(Debug)]
 pub enum Kind {

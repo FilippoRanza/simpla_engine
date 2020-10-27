@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::command_definition::AddrSize;
-use crate::reference_memory::ReferenceCount;
+use crate::reference_memory::{ReferenceCount, ReferenceStack};
 
 #[derive(Debug)]
 pub struct StringMemory {
@@ -35,6 +35,18 @@ impl StringMemory {
         let tmp = self.buff.get_mut(&index);
         let str_val = tmp.unwrap();
         str_val.get_str()
+    }
+
+    pub fn binary_operation<F, T>(&mut self, callback: F, stack: &mut ReferenceStack) -> T
+    where F: Fn(&str, &str) -> T
+    {
+        let rhs_index = stack.pop(self);
+        let lhs_index = stack.pop(self);
+
+        let rhs = self.buff.get(&rhs_index).unwrap();
+        let lhs = self.buff.get(&lhs_index).unwrap();
+
+        callback(lhs.get_str(), rhs.get_str())
     }
 }
 
