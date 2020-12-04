@@ -166,10 +166,11 @@ impl StringBuffer {
     fn get_buffer(&mut self) -> Option<String> {
         let s = self.buff.take();
         if let Some(s) = s {
-            if self.begin == s.len() {
-                None
-            } else if self.begin == 0 {
+            if s.len() == 0 || self.begin == 0{
                 Some(s)
+            }
+            else if self.begin == s.len() {
+                None
             } else {
                 let tmp = &s[self.begin..];
                 Some(tmp.to_owned())
