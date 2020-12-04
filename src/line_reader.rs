@@ -8,7 +8,7 @@ pub enum ReadError {
     IntParseError(String),
     RealParseError(String),
     BoolParseError(String),
-    EOF
+    EOF,
 }
 
 impl fmt::Display for ReadError {
@@ -18,7 +18,7 @@ impl fmt::Display for ReadError {
             Self::IntParseError(err) => write!(f, "{}", parse_error_mgs(err, "integer")),
             Self::RealParseError(err) => write!(f, "{}", parse_error_mgs(err, "real")),
             Self::BoolParseError(err) => write!(f, "{}", parse_error_mgs(err, "boolean")),
-            Self::EOF => write!(f, "STDIN reach EOF: no more input available")
+            Self::EOF => write!(f, "STDIN reach EOF: no more input available"),
         }
     }
 }
@@ -70,7 +70,7 @@ pub struct LineReader {
     string_buff: StringBuffer,
 }
 
-impl LineReader{
+impl LineReader {
     pub fn new() -> Self {
         Self {
             string_buff: StringBuffer::new(),
@@ -93,8 +93,8 @@ impl LineReader{
         loop {
             let buff = self.string_buff.get_buffer();
             if let Some(buff) = buff {
-                return Ok(buff)
-            }  else {
+                return Ok(buff);
+            } else {
                 self.string_buff.read_from_stdin()?;
             }
         }
@@ -108,13 +108,12 @@ impl LineReader{
             let token = self.string_buff.next_token();
             if let Some(token) = token {
                 let res = parse_token(token);
-                return convert_result(res, k)
-            }  else {
+                return convert_result(res, k);
+            } else {
                 self.string_buff.read_from_stdin()?;
             }
         }
     }
-
 }
 
 fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, ReadError> {
@@ -135,9 +134,6 @@ where
     }
 }
 
-
-
-
 struct StringBuffer {
     buff: Option<String>,
     begin: usize,
@@ -155,12 +151,11 @@ impl StringBuffer {
     fn new() -> Self {
         Self {
             buff: None,
-            begin: 0
+            begin: 0,
         }
     }
 
     fn read_from_stdin(&mut self) -> Result<(), ReadError> {
-         
         let mut buff = get_line()?;
         buff.pop();
         self.begin = 0;
@@ -173,10 +168,9 @@ impl StringBuffer {
         if let Some(s) = s {
             if self.begin == s.len() {
                 None
-            } else if self.begin == 0{
+            } else if self.begin == 0 {
                 Some(s)
-            }
-            else {
+            } else {
                 let tmp = &s[self.begin..];
                 Some(tmp.to_owned())
             }
@@ -194,7 +188,6 @@ impl StringBuffer {
             None
         }
     }
-
 }
 
 fn find_next_token<'a>(mut begin: usize, s: &'a str) -> Option<(&'a str, usize)> {
@@ -241,16 +234,14 @@ fn find_next_token<'a>(mut begin: usize, s: &'a str) -> Option<(&'a str, usize)>
 fn get_line() -> Result<String, ReadError> {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
-    let mut buff = String::new(); 
+    let mut buff = String::new();
     let count = handle.read_line(&mut buff)?;
     if count == 0 {
         Err(ReadError::EOF)
     } else {
         Ok(buff)
     }
-    
 }
-
 
 #[cfg(test)]
 mod test {
