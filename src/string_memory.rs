@@ -38,7 +38,8 @@ impl StringMemory {
     }
 
     pub fn binary_operation<F, T>(&mut self, callback: F, stack: &mut ReferenceStack) -> T
-    where F: Fn(&str, &str) -> T
+    where
+        F: Fn(&str, &str) -> T,
     {
         let rhs_index = stack.pop(self);
         let lhs_index = stack.pop(self);

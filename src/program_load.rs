@@ -156,7 +156,7 @@ fn is_single_command(byte: u8) -> Option<Command> {
         | opcode::FLU
         | opcode::EXT
         | opcode::PARAM
-        | opcode::BFOR..=opcode::NOT 
+        | opcode::BFOR..=opcode::NOT
         | opcode::GEQS..=opcode::NEB => Some(convert_single(byte)),
         _ => None,
     }

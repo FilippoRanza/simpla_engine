@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::fmt;
 use std::io::{self, BufRead, Error};
 use std::str::FromStr;
@@ -9,9 +8,7 @@ pub enum ReadError {
     IntParseError(String),
     RealParseError(String),
     BoolParseError(String),
-    MissingInteger,
-    MissingReal,
-    MissingBoolean,
+    EOF
 }
 
 impl fmt::Display for ReadError {
@@ -21,15 +18,9 @@ impl fmt::Display for ReadError {
             Self::IntParseError(err) => write!(f, "{}", parse_error_mgs(err, "integer")),
             Self::RealParseError(err) => write!(f, "{}", parse_error_mgs(err, "real")),
             Self::BoolParseError(err) => write!(f, "{}", parse_error_mgs(err, "boolean")),
-            Self::MissingBoolean => write!(f, "{}", missing_error_msg("boolean")),
-            Self::MissingInteger => write!(f, "{}", missing_error_msg("integer")),
-            Self::MissingReal => write!(f, "{}", missing_error_msg("real")),
+            Self::EOF => write!(f, "STDIN reach EOF: no more input available")
         }
     }
-}
-
-fn missing_error_msg(expect: &str) -> String {
-    format!("EOF Error: {} was expectd", expect)
 }
 
 fn parse_error_mgs(token: &str, expect: &str) -> String {
@@ -52,7 +43,6 @@ enum Kind {
 }
 
 enum ParseError<'a> {
-    Missing,
     Parse(&'a str),
     InputOutput(Error),
 }
@@ -60,11 +50,6 @@ enum ParseError<'a> {
 impl<'a> ParseError<'a> {
     fn to_read_error(self, k: Kind) -> ReadError {
         match self {
-            Self::Missing => match k {
-                Kind::Integer => ReadError::MissingInteger,
-                Kind::Real => ReadError::MissingReal,
-                Kind::Boolean => ReadError::MissingBoolean,
-            },
             Self::Parse(s) => match k {
                 Kind::Integer => ReadError::IntParseError(s.to_owned()),
                 Kind::Real => ReadError::RealParseError(s.to_owned()),
@@ -82,56 +67,54 @@ impl<'a> From<Error> for ParseError<'a> {
 }
 
 pub struct LineReader {
-    buff: String,
-    int_buff: VecDeque<i32>,
-    real_buff: VecDeque<f64>,
-    bool_buff: VecDeque<bool>,
-    auto_clean: bool,
+    string_buff: StringBuffer,
 }
 
-impl LineReader {
-    pub fn new(auto_clean: bool) -> Self {
+impl LineReader{
+    pub fn new() -> Self {
         Self {
-            buff: String::new(),
-            int_buff: VecDeque::new(),
-            real_buff: VecDeque::new(),
-            bool_buff: VecDeque::new(),
-            auto_clean,
+            string_buff: StringBuffer::new(),
         }
     }
 
     pub fn next_i32(&mut self) -> Result<i32, ReadError> {
-        if self.auto_clean {
-            self.real_buff.clear();
-            self.bool_buff.clear();
-        }
-        let res = next_parsed_token(&mut self.buff, &mut self.int_buff);
-        convert_result(res, Kind::Integer)
+        self.next(Kind::Integer)
     }
 
     pub fn next_f64(&mut self) -> Result<f64, ReadError> {
-        if self.auto_clean {
-            self.int_buff.clear();
-            self.bool_buff.clear();
-        }
-        let res = next_parsed_token(&mut self.buff, &mut self.real_buff);
-        convert_result(res, Kind::Real)
+        self.next(Kind::Real)
     }
 
     pub fn next_bool(&mut self) -> Result<bool, ReadError> {
-        if self.auto_clean {
-            self.real_buff.clear();
-            self.int_buff.clear();
-        }
-        let res = next_parsed_token(&mut self.buff, &mut self.bool_buff);
-        convert_result(res, Kind::Boolean)
+        self.next(Kind::Boolean)
     }
 
     pub fn next_string(&mut self) -> Result<String, ReadError> {
-        fill_buffer(&mut self.buff)?;
-        let out = self.buff.clone();
-        Ok(out)
+        loop {
+            let buff = self.string_buff.get_buffer();
+            if let Some(buff) = buff {
+                return Ok(buff)
+            }  else {
+                self.string_buff.read_from_stdin()?;
+            }
+        }
     }
+
+    fn next<T>(&mut self, k: Kind) -> Result<T, ReadError>
+    where
+        T: FromStr,
+    {
+        loop {
+            let token = self.string_buff.next_token();
+            if let Some(token) = token {
+                let res = parse_token(token);
+                return convert_result(res, k)
+            }  else {
+                self.string_buff.read_from_stdin()?;
+            }
+        }
+    }
+
 }
 
 fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, ReadError> {
@@ -141,36 +124,165 @@ fn convert_result<'a, T>(res: Result<T, ParseError<'a>>, k: Kind) -> Result<T, R
     }
 }
 
-fn next_parsed_token<'a, T>(
-    buff: &'a mut String,
-    store: &'a mut VecDeque<T>,
-) -> Result<T, ParseError<'a>>
+fn parse_token<T>(tok: &str) -> Result<T, ParseError>
 where
     T: FromStr,
 {
-    if store.is_empty() {
-        fill_buffer(buff)?;
-        for token in buff.split_ascii_whitespace() {
-            let parse_res = token.parse();
-            match parse_res {
-                Ok(val) => store.push_back(val),
-                Err(_) => return Err(ParseError::Parse(token)),
-            }
-        }
-    }
-
-    if let Some(val) = store.pop_front() {
-        Ok(val)
-    } else {
-        Err(ParseError::Missing)
+    let parse_res = tok.parse();
+    match parse_res {
+        Ok(v) => Ok(v),
+        Err(_) => Err(ParseError::Parse(tok)),
     }
 }
 
-fn fill_buffer(buff: &mut String) -> std::io::Result<()> {
-    buff.clear();
+
+
+
+struct StringBuffer {
+    buff: Option<String>,
+    begin: usize,
+}
+
+impl StringBuffer {
+    #[cfg(test)]
+    fn from_string(s: String) -> Self {
+        Self {
+            buff: Some(s),
+            begin: 0,
+        }
+    }
+
+    fn new() -> Self {
+        Self {
+            buff: None,
+            begin: 0
+        }
+    }
+
+    fn read_from_stdin(&mut self) -> Result<(), ReadError> {
+         
+        let mut buff = get_line()?;
+        buff.pop();
+        self.begin = 0;
+        self.buff = Some(buff);
+        Ok(())
+    }
+
+    fn get_buffer(&mut self) -> Option<String> {
+        let s = self.buff.take();
+        if let Some(s) = s {
+            if self.begin == s.len() {
+                None
+            } else if self.begin == 0{
+                Some(s)
+            }
+            else {
+                let tmp = &s[self.begin..];
+                Some(tmp.to_owned())
+            }
+        } else {
+            None
+        }
+    }
+
+    fn next_token(&mut self) -> Option<&str> {
+        if let Some(s) = &self.buff {
+            let (output, begin) = find_next_token(self.begin, &s)?;
+            self.begin = begin;
+            Some(output)
+        } else {
+            None
+        }
+    }
+
+}
+
+fn find_next_token<'a>(mut begin: usize, s: &'a str) -> Option<(&'a str, usize)> {
+    enum TokenState {
+        Begin,
+        Token,
+        End,
+    }
+    if begin == s.len() {
+        None
+    } else {
+        let mut stat = TokenState::Begin;
+        let mut end = begin;
+        for (c, i) in s[begin..].chars().zip(begin..) {
+            stat = match stat {
+                TokenState::Begin => {
+                    if c.is_ascii_whitespace() {
+                        TokenState::Begin
+                    } else {
+                        begin = i;
+                        TokenState::Token
+                    }
+                }
+                TokenState::Token => {
+                    if c.is_ascii_whitespace() {
+                        end = i;
+                        TokenState::End
+                    } else {
+                        TokenState::Token
+                    }
+                }
+                TokenState::End => break,
+            };
+        }
+
+        match stat {
+            TokenState::Begin => None,
+            TokenState::Token => Some((&s[begin..], s.len())),
+            TokenState::End => Some((&s[begin..end], end)),
+        }
+    }
+}
+
+fn get_line() -> Result<String, ReadError> {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
-    handle.read_line(buff)?;
-    buff.pop();
-    Ok(())
+    let mut buff = String::new(); 
+    let count = handle.read_line(&mut buff)?;
+    if count == 0 {
+        Err(ReadError::EOF)
+    } else {
+        Ok(buff)
+    }
+    
+}
+
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_string_buffer_tokens() {
+        let mut buffer = StringBuffer::from_string(" 45 45.67    12.12 test  ".to_owned());
+        assert_eq!(buffer.next_token(), Some("45"));
+        assert_eq!(buffer.next_token(), Some("45.67"));
+        assert_eq!(buffer.next_token(), Some("12.12"));
+        assert_eq!(buffer.next_token(), Some("test"));
+        assert_eq!(buffer.next_token(), None);
+
+        let mut buffer = StringBuffer::from_string("45 45.67    12.12 test".to_owned());
+        assert_eq!(buffer.next_token(), Some("45"));
+        assert_eq!(buffer.next_token(), Some("45.67"));
+        assert_eq!(buffer.next_token(), Some("12.12"));
+        assert_eq!(buffer.next_token(), Some("test"));
+        assert_eq!(buffer.next_token(), None);
+    }
+
+    #[test]
+    fn test_string_buffer_full_string() {
+        let mut buffer = StringBuffer::from_string("12 true full string test".to_owned());
+        assert_eq!(buffer.next_token(), Some("12"));
+        assert_eq!(
+            buffer.get_buffer(),
+            Some(" true full string test".to_owned())
+        );
+        assert_eq!(buffer.next_token(), None);
+        assert_eq!(buffer.get_buffer(), None);
+    }
 }

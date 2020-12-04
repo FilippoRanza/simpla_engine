@@ -53,7 +53,7 @@ pub enum Command {
     NewRecord,
     Unary(Kind),
     StrCompare(RelationalOperator),
-    BoolCompare(RelationalOperator)
+    BoolCompare(RelationalOperator),
 }
 #[derive(Debug)]
 pub enum Kind {

@@ -25,7 +25,7 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
     let mut global_memory = EngineMemory::new();
     let mut engine_stack = EngineStack::new();
 
-    let mut reader = LineReader::new(true);
+    let mut reader = LineReader::new();
 
     let mut next_record: Option<Record> = None;
     let mut for_loop_stack = ForLoopStack::new();
@@ -46,13 +46,16 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                 &mut engine_stack.bool_stack,
             ),
             Command::StrCompare(cmd) => {
-                let res = string_memory.binary_operation(|l, r| binary_rel_operation(cmd, l, r), &mut engine_stack.str_stack);
+                let res = string_memory.binary_operation(
+                    |l, r| binary_rel_operation(cmd, l, r),
+                    &mut engine_stack.str_stack,
+                );
                 engine_stack.bool_stack.push(res);
-            },
+            }
             Command::BoolCompare(cmd) => {
                 let res = rel_operation(cmd, &mut engine_stack.bool_stack);
                 engine_stack.bool_stack.push(res);
-            },
+            }
             Command::CastInt => {
                 let n = engine_stack.real_stack.pop().unwrap();
                 let i = n as i32;
@@ -488,8 +491,10 @@ where
     binary_rel_operation(op, lhs, rhs)
 }
 
-fn binary_rel_operation<T>(op: &RelationalOperator, lhs: T, rhs: T) -> bool 
-where T: PartialEq + PartialOrd{
+fn binary_rel_operation<T>(op: &RelationalOperator, lhs: T, rhs: T) -> bool
+where
+    T: PartialEq + PartialOrd,
+{
     match op {
         RelationalOperator::GreatEq => lhs >= rhs,
         RelationalOperator::Greater => lhs > rhs,
@@ -499,7 +504,6 @@ where T: PartialEq + PartialOrd{
         RelationalOperator::NotEqual => lhs != rhs,
     }
 }
-
 
 struct EngineMemory {
     int_mem: HashMap<AddrSize, i32>,
