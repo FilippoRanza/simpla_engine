@@ -17,6 +17,8 @@ struct ProgramFactory {
     body: Vec<Command>,
     func: Vec<Vec<Command>>,
     curr: Vec<Command>,
+    main_mem: Option<MemorySize>,
+    func_mem: Vec<MemorySize>,
 }
 
 impl ProgramFactory {
@@ -26,6 +28,8 @@ impl ProgramFactory {
             body: vec![],
             func: vec![],
             curr: vec![],
+            main_mem: None,
+            func_mem: vec![],
         }
     }
 
@@ -38,6 +42,8 @@ impl ProgramFactory {
             func: self.func,
             state: ProgramBuildState::Function,
             curr: vec![],
+            main_mem: self.main_mem,
+            func_mem: self.func_mem,
         }
     }
 
@@ -48,17 +54,43 @@ impl ProgramFactory {
         }
     }
 
-    fn build_program(mut self) -> Program {
+    fn add_memory_size(
+        &mut self,
+        int_count: AddrSize,
+        real_count: AddrSize,
+        boolean_count: AddrSize,
+        string_count: AddrSize,
+    ) {
+        let mem_size = MemorySize {
+            integer_count: int_count as usize,
+            real_count: real_count as usize,
+            boolean_count: boolean_count as usize,
+            string_count: string_count as usize,
+        };
+        match self.state {
+            ProgramBuildState::Body => self.main_mem = Some(mem_size),
+            ProgramBuildState::Function => self.func_mem.push(mem_size),
+        }
+    }
+
+    fn build_program(mut self) -> (Program, ProgramMemory) {
         if self.curr.len() > 0 {
             self.func.push(self.curr);
         }
 
         let functions = self.func.into_iter().map(|blk| Block::new(blk)).collect();
 
-        Program {
+        let prog = Program {
             body: Block::new(self.body),
             func: functions,
-        }
+        };
+
+        let mem = ProgramMemory {
+            main: self.main_mem.unwrap(),
+            func: self.func_mem
+        };
+
+        (prog, mem)
     }
 }
 
@@ -117,12 +149,12 @@ impl ErrorLocation {
     }
 }
 
-pub fn load_program(file: &Path) -> Result<(Program, StringMemory), LoadError> {
+pub fn load_program(file: &Path) -> Result<(Program, ProgramMemory, StringMemory), LoadError> {
     let data = load_file(file)?;
     parse_data(&data)
 }
 
-fn parse_data(data: &[u8]) -> Result<(Program, StringMemory), LoadError> {
+fn parse_data(data: &[u8]) -> Result<(Program, ProgramMemory, StringMemory), LoadError> {
     let mut factory = ProgramFactory::new();
     let mut index = 0;
     let mut string_memory = StringMemory::new();
@@ -139,13 +171,31 @@ fn parse_data(data: &[u8]) -> Result<(Program, StringMemory), LoadError> {
         } else if data[index] == opcode::FUNC {
             factory = factory.switch_function();
             index += 1;
+        } else if data[index] == opcode::INIT {
+            let (int_count, real_count, bool_count, str_count) =
+                get_memory_command(index + 1, data)?;
+            factory.add_memory_size(int_count, real_count, bool_count, str_count);
+            index += 9;
         } else {
             let err = UnknownByteError::new(data[index], index);
             return Err(LoadError::UnknownByte(err));
         }
     }
 
-    Ok((factory.build_program(), string_memory))
+    let (prog, mem) = factory.build_program();
+    Ok((prog, mem, string_memory))
+}
+
+fn get_memory_command(
+    index: usize,
+    buff: &[u8],
+) -> Result<(AddrSize, AddrSize, AddrSize, AddrSize), LoadError> {
+    Ok((
+        get_u16(buff, index)?,
+        get_u16(buff, index + 2)?,
+        get_u16(buff, index + 4)?,
+        get_u16(buff, index + 6)?,
+    ))
 }
 
 fn is_single_command(byte: u8) -> Option<Command> {
@@ -155,7 +205,6 @@ fn is_single_command(byte: u8) -> Option<Command> {
         | opcode::FLN
         | opcode::FLU
         | opcode::EXT
-        | opcode::PARAM
         | opcode::BFOR..=opcode::NOT
         | opcode::GEQS..=opcode::NEB => Some(convert_single(byte)),
         _ => None,
@@ -191,6 +240,10 @@ fn is_address_command(index: usize, buff: &[u8]) -> Result<Option<(Command, usiz
             let addr = get_u16(buff, index + 1)?;
             let cmd = Command::StoreParam(kind, addr);
             Some((cmd, 3))
+        }
+        opcode::PARAM => {
+            let tmp = get_u16(buff, index + 1)? as usize;
+            Some((Command::NewRecord(tmp), 3))
         }
 
         _ => None,
@@ -261,7 +314,6 @@ fn convert_single(byte: u8) -> Command {
         opcode::CSTR => Command::CastReal,
         opcode::OR => Command::Or,
         opcode::AND => Command::And,
-        opcode::PARAM => Command::NewRecord,
         opcode::BFOR => Command::ForControl(ForControl::New),
         opcode::CFOR => Command::ForControl(ForControl::Check),
         opcode::EFOR => Command::ForControl(ForControl::End),
@@ -370,7 +422,7 @@ mod test {
         // 5 chars
         let a = 'a' as u8;
         let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
-        let (prog, mut mem) = parse_data(&with_string).unwrap();
+        let (prog, _, mut mem) = parse_data(&with_string).unwrap();
         assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
@@ -417,7 +469,7 @@ mod test {
             data.push(*b);
         }
 
-        let (prog, _) = parse_data(&data).unwrap();
+        let (prog, _, _) = parse_data(&data).unwrap();
         assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
@@ -444,7 +496,7 @@ mod test {
             opcode::RET,
         ];
 
-        let (prog, _) = parse_data(&data).unwrap();
+        let (prog, _, _) = parse_data(&data).unwrap();
         assert_eq!(prog.body.code.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
         for func in &prog.func {

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::command_definition::AddrSize;
 use crate::reference_memory::{ReferenceCount, ReferenceStack};
 
 #[derive(Debug)]
@@ -25,8 +24,8 @@ impl StringMemory {
         key
     }
 
-    pub fn remove_strings(&mut self, string_mem: &HashMap<AddrSize, usize>) {
-        for i in string_mem.values() {
+    pub fn remove_strings(&mut self, string_mem: &Vec<usize>) {
+        for i in string_mem {
             self.decrement(i);
         }
     }

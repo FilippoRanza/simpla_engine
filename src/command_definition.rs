@@ -15,6 +15,21 @@ pub struct Block {
     pub labels: HashMap<usize, usize>,
 }
 
+#[derive(Debug)]
+pub struct ProgramMemory {
+    pub main: MemorySize,
+    pub func: Vec<MemorySize>
+}
+
+
+#[derive(Debug, std::default::Default)]
+pub struct MemorySize {
+    pub integer_count: usize,
+    pub real_count: usize,
+    pub boolean_count: usize,
+    pub string_count: usize,
+}
+
 impl Block {
     pub fn new(code: Vec<Command>) -> Self {
         let labels = Self::build_labels(&code);
@@ -50,7 +65,7 @@ pub enum Command {
     Exit,
     ConstantLoad(Constant),
     StoreParam(Kind, AddrSize),
-    NewRecord,
+    NewRecord(usize),
     Unary(Kind),
     StrCompare(RelationalOperator),
     BoolCompare(RelationalOperator),

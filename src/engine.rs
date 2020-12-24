@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 
 use crate::command_definition::{
     AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, Operator,
-    Program, RelationalOperator,
+    Program, RelationalOperator, ProgramMemory, MemorySize
 };
 use crate::for_loop_stack::ForLoopStack;
 use crate::line_reader::{LineReader, ReadError};
@@ -16,13 +15,13 @@ use std::ops::{Add, Div, Mul, Sub};
 const ADDR_SIZE_ZERO: AddrSize = 0;
 const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
 
-pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(), RuntimeError> {
+pub fn run_program(prog: Program, prog_mem:  ProgramMemory, mut string_memory: StringMemory) -> Result<(), RuntimeError> {
     let mut stack_vect: Vec<Record> = Vec::new();
 
     let mut curr_block = &prog.body;
     let mut index: usize = 0;
 
-    let mut global_memory = EngineMemory::new();
+    let mut global_memory = EngineMemory::new(&prog_mem.main);
     let mut engine_stack = EngineStack::new();
 
     let mut reader = LineReader::new();
@@ -146,9 +145,10 @@ pub fn run_program(prog: Program, mut string_memory: StringMemory) -> Result<(),
                     panic!("cannot store parameter before initializing a new activation record");
                 }
             }
-            Command::NewRecord => {
+            Command::NewRecord(f_id) => {
                 if next_record.is_none() {
-                    next_record = Some(Record::new(curr_block));
+                    let mem_size = prog_mem.func.get(*f_id).unwrap();
+                    next_record = Some(Record::new(curr_block, mem_size));
                 } else {
                     panic!("cannot initialize a new activation record")
                 }
@@ -327,21 +327,21 @@ fn clean_prev(prev: Option<usize>, str_mem: &mut StringMemory) {
 }
 
 fn get_value<'a, T>(
-    glob: &'a HashMap<AddrSize, T>,
-    loc: Option<&'a HashMap<AddrSize, T>>,
+    glob: &'a Vec<T>,
+    loc: Option<&'a Vec<T>>,
     addr: AddrSize,
 ) -> &'a T {
     if addr & LOCAL_MASK == 0 {
-        glob.get(&addr).unwrap()
+        glob.get(addr as usize).unwrap()
     } else {
         let loc = loc.unwrap();
-        loc.get(&addr).unwrap()
+        loc.get(addr as usize).unwrap()
     }
 }
 
 fn set_value<'a, T>(
-    glob: &'a mut HashMap<AddrSize, T>,
-    loc: Option<&'a mut HashMap<AddrSize, T>>,
+    glob: &'a mut Vec<T>,
+    loc: Option<&'a mut Vec<T>>,
     addr: AddrSize,
     value: T,
 ) -> Option<T>
@@ -356,16 +356,16 @@ where
     }
 }
 
-fn insert_and_get_prev<T>(map: &mut HashMap<AddrSize, T>, addr: AddrSize, value: T) -> Option<T>
+fn insert_and_get_prev<T>(map: &mut Vec<T>, addr: AddrSize, value: T) -> Option<T>
 where
     T: Copy,
 {
-    let output = if let Some(prev) = map.get(&addr) {
+    let output = if let Some(prev) = map.get(addr as usize) {
         Some(*prev)
     } else {
         None
     };
-    map.insert(addr, value);
+    map[addr as usize] = value;
     output
 }
 
@@ -506,19 +506,19 @@ where
 }
 
 struct EngineMemory {
-    int_mem: HashMap<AddrSize, i32>,
-    real_mem: HashMap<AddrSize, f64>,
-    bool_mem: HashMap<AddrSize, bool>,
-    str_mem: HashMap<AddrSize, usize>,
+    int_mem: Vec<i32>,
+    real_mem: Vec<f64>,
+    bool_mem: Vec<bool>,
+    str_mem: Vec<usize>,
 }
 
 impl EngineMemory {
-    fn new() -> Self {
+    fn new(size: &MemorySize) -> Self {
         Self {
-            int_mem: HashMap::new(),
-            real_mem: HashMap::new(),
-            bool_mem: HashMap::new(),
-            str_mem: HashMap::new(),
+            int_mem: (0..size.integer_count).map(|_| 0).collect(),
+            real_mem: (0..size.real_count).map(|_| 0.0).collect(),
+            bool_mem: (0..size.boolean_count).map(|_| false).collect(),
+            str_mem: (0..size.string_count).map(|_| 0).collect(),
         }
     }
 }
@@ -548,11 +548,11 @@ struct Record<'a> {
 }
 
 impl<'a> Record<'a> {
-    fn new(return_block: &'a Block) -> Self {
+    fn new(return_block: &'a Block, func_mem_size: &MemorySize) -> Self {
         Self {
             return_index: 0,
             return_block,
-            func_mem: EngineMemory::new(),
+            func_mem: EngineMemory::new(func_mem_size),
         }
     }
 }
