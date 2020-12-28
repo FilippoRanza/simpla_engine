@@ -8,6 +8,12 @@ pub struct StringMemory {
     index: usize,
 }
 
+#[derive(Debug)]
+enum StringType {
+    Static,
+    Dynamic
+}
+
 impl StringMemory {
     pub fn new() -> Self {
         Self {
@@ -16,10 +22,20 @@ impl StringMemory {
         }
     }
 
+    pub fn insert_static_string(&mut self, s: String) -> usize {
+        self.insert_new_string(s, StringType::Static)
+    }
+
     pub fn insert_string(&mut self, s: String) -> usize {
+        self.insert_new_string(s, StringType::Dynamic)
+    }
+    
+    
+
+    fn insert_new_string(&mut self, s: String, str_type: StringType) -> usize {
         let key = self.index;
         self.index += 1;
-        let str_val = StringValue::new(s);
+        let str_val = StringValue::new(s, str_type);
         self.buff.insert(key, str_val);
         key
     }
@@ -30,8 +46,8 @@ impl StringMemory {
         }
     }
 
-    pub fn get_string(&mut self, index: usize) -> &str {
-        let tmp = self.buff.get_mut(&index);
+    pub fn get_string(&self, index: usize) -> &str {
+        let tmp = self.buff.get(&index);
         let str_val = tmp.unwrap();
         str_val.get_str()
     }
@@ -72,23 +88,29 @@ impl ReferenceCount for StringMemory {
 struct StringValue {
     string: String,
     ref_count: usize,
+    str_type: StringType
 }
 
 impl StringValue {
-    fn new(string: String) -> Self {
+    fn new(string: String, str_type: StringType) -> Self {
         Self {
             string,
             ref_count: 1,
+            str_type
         }
     }
 
     fn incr_ref(&mut self) {
-        self.ref_count += 1;
+        if let StringType::Dynamic = self.str_type {
+            self.ref_count += 1;
+        }
     }
 
     fn decr_ref(&mut self) {
-        if self.ref_count > 0 {
-            self.ref_count -= 1;
+        if let StringType::Dynamic = self.str_type {
+            if self.ref_count > 0 {
+                self.ref_count -= 1;
+            }
         }
     }
 

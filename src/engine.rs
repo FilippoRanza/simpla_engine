@@ -147,6 +147,7 @@ pub fn run_program(prog: Program, prog_mem:  ProgramMemory, mut string_memory: S
             }
             Command::NewRecord(f_id) => {
                 if next_record.is_none() {
+                    debug_assert!(*f_id < prog_mem.func.len());
                     let mem_size = prog_mem.func.get(*f_id).unwrap();
                     next_record = Some(Record::new(curr_block, mem_size));
                 } else {
@@ -335,6 +336,7 @@ fn get_value<'a, T>(
         glob.get(addr as usize).unwrap()
     } else {
         let loc = loc.unwrap();
+        let addr = addr - LOCAL_MASK;
         loc.get(addr as usize).unwrap()
     }
 }
@@ -352,6 +354,7 @@ where
         insert_and_get_prev(glob, addr, value)
     } else {
         let loc = loc.unwrap();
+        let addr = addr - LOCAL_MASK;
         insert_and_get_prev(loc, addr, value)
     }
 }

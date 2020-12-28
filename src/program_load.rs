@@ -294,7 +294,7 @@ fn convert_constant(
             let byte_string = take_bytes(buff, index + 3, size)?;
             let tmp_str = str::from_utf8(byte_string)?;
             let string = tmp_str.to_owned();
-            let index = str_mem.insert_string(string);
+            let index = str_mem.insert_static_string(string);
             Ok((Constant::Str(index), size + 2))
         }
         _ => unreachable!(),
@@ -413,16 +413,26 @@ fn get_boolean(buff: &[u8], index: usize) -> Result<bool, LoadError> {
 mod test {
 
     use super::*;
+    
+
+
+    fn add_init_header(mut code: Vec<u8>) -> Vec<u8> {
+        let mut init_header: Vec<u8> = (0..9).map(|_| 0).collect();
+        init_header[0] = opcode::INIT;
+        init_header.append(&mut code);
+        init_header
+    }
 
     #[test]
     fn test_correct_parse() {
-        let simple = vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::OR];
+        
+        let simple = add_init_header(vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::OR]);
         parse_data(&simple).unwrap();
 
         // 5 chars
         let a = 'a' as u8;
-        let with_string = vec![opcode::LDSC, 0, 5, a, a, a, a, a];
-        let (prog, _, mut mem) = parse_data(&with_string).unwrap();
+        let with_string = add_init_header(vec![opcode::LDSC, 0, 5, a, a, a, a, a]);
+        let (prog, _, mem) = parse_data(&with_string).unwrap();
         assert_eq!(prog.body.code.len(), 1);
         assert_eq!(prog.func.len(), 0);
 
@@ -464,7 +474,7 @@ mod test {
         let number: f64 = 6.80;
         let bytes = number.to_be_bytes();
 
-        let mut data = vec![opcode::LDRC];
+        let mut data = add_init_header(vec![opcode::LDRC]);
         for b in &bytes {
             data.push(*b);
         }
@@ -481,7 +491,7 @@ mod test {
 
     #[test]
     fn test_function_build() {
-        let data = [
+        let data = vec![
             opcode::ADDI,
             opcode::GEQI,
             opcode::CALL,
@@ -495,7 +505,7 @@ mod test {
             opcode::GEQR,
             opcode::RET,
         ];
-
+        let data = add_init_header(data);
         let (prog, _, _) = parse_data(&data).unwrap();
         assert_eq!(prog.body.code.len(), 4);
         assert_eq!(prog.func.len(), 2, "{:?}", prog.func);
@@ -503,4 +513,6 @@ mod test {
             assert_eq!(func.code.len(), 2);
         }
     }
+
+
 }
