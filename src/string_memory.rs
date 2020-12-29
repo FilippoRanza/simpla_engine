@@ -16,10 +16,12 @@ enum StringType {
 
 impl StringMemory {
     pub fn new() -> Self {
-        Self {
+        let mut output = Self {
             buff: HashMap::new(),
             index: 0,
-        }
+        };
+        output.insert_static_string(String::new());
+        output
     }
 
     pub fn insert_static_string(&mut self, s: String) -> usize {
