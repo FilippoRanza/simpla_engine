@@ -200,7 +200,7 @@ fn get_memory_command(
 
 fn is_single_command(byte: u8) -> Option<Command> {
     match byte {
-        opcode::ADDI..=opcode::AND
+        opcode::ADDI..=opcode::CSTR
         | opcode::RDI..=opcode::WRS
         | opcode::FLN
         | opcode::FLU
@@ -312,8 +312,6 @@ fn convert_single(byte: u8) -> Command {
         opcode::FLN => Command::Flush(FlushMode::NewLine),
         opcode::CSTI => Command::CastInt,
         opcode::CSTR => Command::CastReal,
-        opcode::OR => Command::Or,
-        opcode::AND => Command::And,
         opcode::BFOR => Command::ForControl(ForControl::New),
         opcode::CFOR => Command::ForControl(ForControl::Check),
         opcode::EFOR => Command::ForControl(ForControl::End),
@@ -426,7 +424,7 @@ mod test {
     #[test]
     fn test_correct_parse() {
         
-        let simple = add_init_header(vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::OR]);
+        let simple = add_init_header(vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::SUBI]);
         parse_data(&simple).unwrap();
 
         // 5 chars

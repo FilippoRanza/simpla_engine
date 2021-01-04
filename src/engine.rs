@@ -65,7 +65,6 @@ pub fn run_program(prog: Program, prog_mem:  ProgramMemory, mut string_memory: S
                 let n = i as f64;
                 engine_stack.real_stack.push(n);
             }
-            Command::And | Command::Or => boolean_operation(cmd, &mut engine_stack.bool_stack),
             Command::MemoryLoad(load, add) => {
                 let local = if let Some(last) = stack_vect.last_mut() {
                     Some(&last.func_mem)
@@ -439,16 +438,6 @@ fn handle_flush(mode: &FlushMode) {
     }
 }
 
-fn boolean_operation(cmd: &Command, stack: &mut Vec<bool>) {
-    let a = stack.pop().unwrap();
-    let b = stack.pop().unwrap();
-    let c = match cmd {
-        Command::And => a && b,
-        Command::Or => a || b,
-        _ => unreachable!(),
-    };
-    stack.push(c);
-}
 
 fn full_math_operation<T>(op: &Operator, numbers: &mut Vec<T>, booleans: &mut Vec<bool>)
 where

@@ -53,8 +53,6 @@ pub enum Command {
     Real(Operator),
     CastInt,
     CastReal,
-    And,
-    Or,
     MemoryLoad(Kind, AddrSize),
     MemoryStore(Kind, AddrSize),
     Control(ControlFlow, usize),
@@ -204,13 +202,13 @@ mod test {
     fn test_label_translation() {
         // just some random code
         let code = [
-            Command::Or,
+            Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::Jump, 0),
             Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::Label, 1),
             Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::JumpFalse, 1),
-            Command::Or,
+            Command::Real(Operator::Math(MathOperator::Add)),
             Command::Control(ControlFlow::Label, 0),
             Command::Exit,
         ];
