@@ -87,7 +87,7 @@ impl ProgramFactory {
 
         let mem = ProgramMemory {
             main: self.main_mem.unwrap(),
-            func: self.func_mem
+            func: self.func_mem,
         };
 
         (prog, mem)
@@ -101,6 +101,26 @@ pub enum LoadError {
     InputOutputError(std::io::Error),
     StringEncodeError(str::Utf8Error),
     BooleanEncodeError(u8),
+}
+
+impl std::error::Error for LoadError {}
+
+impl std::fmt::Display for LoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnknownByte(unknown) => write!(
+                f,
+                "Found unknown byte {} at index {}",
+                unknown.value, unknown.index
+            ),
+            Self::MissingBytes(location) => write!(f, "Missing Bytes in input: {}", location),
+            Self::InputOutputError(err) => write!(f, "Error reading input file: {}", err),
+            Self::StringEncodeError(err) => write!(f, "Malformatted UTF-8 string: {}", err),
+            Self::BooleanEncodeError(n) => {
+                write!(f, "Malformatted boolean value: {} - expected 0 or 255", n)
+            }
+        }
+    }
 }
 
 impl From<std::io::Error> for LoadError {
@@ -142,10 +162,32 @@ pub enum ErrorOperation {
     LoadingStr,
     LoadingBool,
 }
+impl std::fmt::Display for ErrorOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            Self::LoadingBool => "boolean",
+            Self::LoadingF64 => "64 bit floatin point",
+            Self::LoadingI32 => "32 bit integer",
+            Self::LoadingStr => "String constant",
+            Self::LoadingU16 => "16 bit integer",
+        };
+        write!(f, "{}", msg)
+    }
+}
 
 impl ErrorLocation {
     fn new(index: usize, length: usize, err: ErrorOperation) -> Self {
         Self { index, length, err }
+    }
+}
+
+impl std::fmt::Display for ErrorLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "index {}, count {} while loading {} value",
+            self.index, self.length, self.err
+        )
     }
 }
 
@@ -411,8 +453,6 @@ fn get_boolean(buff: &[u8], index: usize) -> Result<bool, LoadError> {
 mod test {
 
     use super::*;
-    
-
 
     fn add_init_header(mut code: Vec<u8>) -> Vec<u8> {
         let mut init_header: Vec<u8> = (0..9).map(|_| 0).collect();
@@ -423,7 +463,6 @@ mod test {
 
     #[test]
     fn test_correct_parse() {
-        
         let simple = add_init_header(vec![opcode::ADDI, opcode::SUBI, opcode::ADDR, opcode::SUBI]);
         parse_data(&simple).unwrap();
 
@@ -511,6 +550,4 @@ mod test {
             assert_eq!(func.code.len(), 2);
         }
     }
-
-
 }

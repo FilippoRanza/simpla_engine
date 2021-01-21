@@ -18,9 +18,8 @@ pub struct Block {
 #[derive(Debug)]
 pub struct ProgramMemory {
     pub main: MemorySize,
-    pub func: Vec<MemorySize>
+    pub func: Vec<MemorySize>,
 }
-
 
 #[derive(Debug, std::default::Default)]
 pub struct MemorySize {

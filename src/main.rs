@@ -17,11 +17,17 @@ struct CLIArguments {
     file: PathBuf,
 }
 
+fn compile_and_run(file: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    let (prog, prog_mem, str_mem) = program_load::load_program(file)?;
+    engine::run_program(prog, prog_mem, str_mem)?;
+    Ok(())
+}
+
 fn main() {
     let args = CLIArguments::from_args();
-    let (prog, prog_mem, str_mem) = program_load::load_program(&args.file).unwrap();
-    match engine::run_program(prog, prog_mem, str_mem) {
-        Ok(()) => {}
-        Err(err) => println!("{}", err),
-    };
+    let status = compile_and_run(&args.file);
+    match status {
+        Ok(()) => {},
+        Err(err) => eprintln!("{}", err)
+    }
 }

@@ -11,7 +11,7 @@ pub struct StringMemory {
 #[derive(Debug)]
 enum StringType {
     Static,
-    Dynamic
+    Dynamic,
 }
 
 impl StringMemory {
@@ -31,8 +31,6 @@ impl StringMemory {
     pub fn insert_string(&mut self, s: String) -> usize {
         self.insert_new_string(s, StringType::Dynamic)
     }
-    
-    
 
     fn insert_new_string(&mut self, s: String, str_type: StringType) -> usize {
         let key = self.index;
@@ -90,7 +88,7 @@ impl ReferenceCount for StringMemory {
 struct StringValue {
     string: String,
     ref_count: usize,
-    str_type: StringType
+    str_type: StringType,
 }
 
 impl StringValue {
@@ -98,7 +96,7 @@ impl StringValue {
         Self {
             string,
             ref_count: 1,
-            str_type
+            str_type,
         }
     }
 

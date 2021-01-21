@@ -1,7 +1,6 @@
-
 use crate::command_definition::{
-    AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, Operator,
-    Program, RelationalOperator, ProgramMemory, MemorySize
+    AddrSize, Block, Command, Constant, ControlFlow, FlushMode, Kind, MathOperator, MemorySize,
+    Operator, Program, ProgramMemory, RelationalOperator,
 };
 use crate::for_loop_stack::ForLoopStack;
 use crate::line_reader::{LineReader, ReadError};
@@ -15,7 +14,11 @@ use std::ops::{Add, Div, Mul, Sub};
 const ADDR_SIZE_ZERO: AddrSize = 0;
 const LOCAL_MASK: AddrSize = 1 << (ADDR_SIZE_ZERO.count_zeros() - 1);
 
-pub fn run_program(prog: Program, prog_mem:  ProgramMemory, mut string_memory: StringMemory) -> Result<(), RuntimeError> {
+pub fn run_program(
+    prog: Program,
+    prog_mem: ProgramMemory,
+    mut string_memory: StringMemory,
+) -> Result<(), RuntimeError> {
     let mut stack_vect: Vec<Record> = Vec::new();
 
     let mut curr_block = &prog.body;
@@ -326,11 +329,7 @@ fn clean_prev(prev: Option<usize>, str_mem: &mut StringMemory) {
     }
 }
 
-fn get_value<'a, T>(
-    glob: &'a Vec<T>,
-    loc: Option<&'a Vec<T>>,
-    addr: AddrSize,
-) -> &'a T {
+fn get_value<'a, T>(glob: &'a Vec<T>, loc: Option<&'a Vec<T>>, addr: AddrSize) -> &'a T {
     if addr & LOCAL_MASK == 0 {
         glob.get(addr as usize).unwrap()
     } else {
@@ -438,7 +437,6 @@ fn handle_flush(mode: &FlushMode) {
     }
 }
 
-
 fn full_math_operation<T>(op: &Operator, numbers: &mut Vec<T>, booleans: &mut Vec<bool>)
 where
     T: Add<Output = T>
@@ -515,9 +513,12 @@ impl EngineMemory {
     }
 }
 
+#[derive(Debug)]
 pub enum RuntimeError {
     ReadError(ReadError),
 }
+
+impl std::error::Error for RuntimeError {}
 
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
